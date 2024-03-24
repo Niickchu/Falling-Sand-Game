@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="ASCII"?>
+<sdkproject:SdkProject xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sdkproject="http://www.xilinx.com/sdkproject" name="core_1" location="D:/Xilinx/Projects/falling_sand_game_sw/core_1" platform="D:/Xilinx/Projects/falling_sand_game_sw/falling_sand_plat/export/falling_sand_plat/falling_sand_plat.xpfm" platformUID="xilinx:zedboard::0.0(custom)" systemProject="falling_sand" sysConfig="falling_sand_plat" runtime="C/C++" cpu="ps7_cortexa9_1" cpuInstance="ps7_cortexa9_1" os="standalone" language="CPP" mssSignature="fea6807c07acf1a54aea22295e1832f0">
+  <configuration name="Debug" id="xilinx.gnu.armv7.exe.debug.995308299">
+    <configBuildOptions xsi:type="sdkproject:SdkOptions"/>
+    <lastBuildOptions xsi:type="sdkproject:SdkOptions"/>
+  </configuration>
+  <configuration name="Release" id="xilinx.gnu.armv7.exe.release.1625819915" dirty="true">
+    <configBuildOptions xsi:type="sdkproject:SdkOptions"/>
+  </configuration>
+  <template appTemplateName="empty_application"/>
+</sdkproject:SdkProject>
