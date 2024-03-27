@@ -14,6 +14,7 @@
 #include "platform.h"
 #include "joystick.h"		//included in common.h
 #include <xsysmon.h>
+#include "time.h"
 
 #define sev()           __asm__("sev")
 #define CPU1STARTADR    0xfffffff0
@@ -26,7 +27,7 @@ u16 VpVnData, VAux0Data;
 
 volatile bool RESET_BUTTON_PRESSED_FLAG = false;
 volatile bool STOP_TIME_FLAG = false;
-
+volatile bool ENABLE_CHUNKS_FLAG = true;
 userInput_t userInput = {0, 0, 0, 0, 0, C};
 
 void setUserInput(userInput_t input);
@@ -87,6 +88,11 @@ int main(){
 
 		//draw the cursor on top of the grid
 		game.drawCursor(intermediate_buffer);
+
+		//draw the active chunks
+		if(ENABLE_CHUNKS_FLAG){
+			game.drawActiveChunks(intermediate_buffer);
+		}
 
 		//render game state
 		memcpy(image_buffer_pointer, intermediate_buffer, NUM_BYTES_BUFFER);

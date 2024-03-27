@@ -31,6 +31,8 @@
 #define OIL_ID          (0x00000006)        //beyond the scope of this project
 #define FIRE_ID         (0x00000007)        //beyond the scope of this project, might do anyway
 
+#define CHUNK_SIZE     (20)
+
 #define ID_MASK         (0x0000000F)
 
 #define MAX_NUM_PARTICLES (20000)
@@ -39,6 +41,12 @@
 
 //USER INPUT DEFINES
 #define CHANGE_SPEED (1 << 7) //not used in game class but in main.cc
+
+
+typedef struct {
+    bool computeOnCurrentFrame;
+    bool computeOnNextFrame;
+} chunkBools_t;
 
 //game class
 class FallingSandGame{
@@ -51,6 +59,9 @@ class FallingSandGame{
 
         void drawCursor(int* image_buffer_pointer);
 
+
+        void drawActiveChunks(int* image_buffer_pointer);
+
     private:
     
         bool isInbounds(int x, int y);
@@ -58,6 +69,12 @@ class FallingSandGame{
         bool yInbounds(int y);
 
         int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces);
+
+
+        chunkBools_t chunks[(GRID_WIDTH / CHUNK_SIZE)][(GRID_HEIGHT / CHUNK_SIZE)];     //x and y swapped when compared to row major format for the grid, bcuz standard
+        void hitChunk(int absoluteX, int absoluteY);
+        void updateChunkBools();
+        void updateRowChunk(int chunkX, int chunkY, int row);
 
         int* grid;
         

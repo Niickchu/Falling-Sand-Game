@@ -33,5 +33,6 @@ typedef struct {
 extern userInput_t userInput;
 extern volatile bool RESET_BUTTON_PRESSED_FLAG;
 extern volatile bool STOP_TIME_FLAG;
+extern volatile bool ENABLE_CHUNKS_FLAG;
 
 #endif

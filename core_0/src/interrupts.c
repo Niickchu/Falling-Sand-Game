@@ -133,6 +133,7 @@ static void BTN_Handler(void *InstancePtr){
 			break;
 
 		case LEFT_BUTTON_MASK: //4
+			ENABLE_CHUNKS_FLAG = !ENABLE_CHUNKS_FLAG;
 			break;
 
 		case RIGHT_BUTTON_MASK: //8

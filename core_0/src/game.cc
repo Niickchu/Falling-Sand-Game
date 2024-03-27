@@ -15,6 +15,14 @@ FallingSandGame::FallingSandGame(int* gridPtr){
     numParticles = 0;
 
     cursor = {GRID_WIDTH/2, GRID_HEIGHT/2, CURSOR_COLOUR};  //cursor needs the 1 to not be counted as air
+
+    //initialise the chunkBools_t array to false
+    for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
+        for (int j = 0; j < GRID_HEIGHT / CHUNK_SIZE; j++) {
+            chunks[i][j] = {false, false};
+        }
+    }
+
 }
 
 void FallingSandGame::handleInput(userInput_t* input){
@@ -94,6 +102,11 @@ void FallingSandGame::placeElementsAtCursor(int element){
                 if (grid[index] != AIR_ID) {
                     grid[index] = COLOUR_AIR;
                     numParticles--;
+
+                    //cursor.x is the absolute x position of the cursor
+                    //cursor.y is the absolute y position of the cursor
+                    hitChunk(cursor.x + j, cursor.y + i);
+
                 }
             }
         }
@@ -112,6 +125,9 @@ void FallingSandGame::placeElementsAtCursor(int element){
                 if ((element & ID_MASK) == STONE_ID) {  // No RNG for stone
                     grid[index] = element + getColourModifier(element);
                     numParticles++;
+
+                    hitChunk(cursor.x + j, cursor.y + i);
+
                     if (numParticles >= MAX_NUM_PARTICLES) {
                         return;
                     }
@@ -121,6 +137,9 @@ void FallingSandGame::placeElementsAtCursor(int element){
                     if (rng() > 13) {
                         grid[index] = element + getColourModifier(element);
                         numParticles++;
+
+                        hitChunk(cursor.x + j, cursor.y + i);
+
                         if (numParticles >= MAX_NUM_PARTICLES) {
                             return;
                         }
@@ -184,6 +203,8 @@ void FallingSandGame::updateSand(int x, int y) {
 
     if(targetElementId == AIR_ID || targetElementId == WATER_ID) {
         swap(x, y, x, y + 1);
+        hitChunk(x, y + 1);
+        hitChunk(x, y);
     } 
     else {  
         u32 rng_val = rng();
@@ -195,11 +216,15 @@ void FallingSandGame::updateSand(int x, int y) {
         targetElementId = grid[(y + 1) * GRID_WIDTH + (x + direction)] & ID_MASK;
         if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
             swap(x, y, x + direction, (y + 1));
+            hitChunk(x + direction, y + 1);
+            hitChunk(x, y); //because sand may move away from a chunk border, so need to check where it moves from as well
         } 
         else if (xInbounds(x - direction)) {
             targetElementId = grid[(y + 1) * GRID_WIDTH + (x - direction)] & ID_MASK;
             if (targetElementId == AIR_ID || targetElementId == WATER_ID) {
                 swap(x, y, x - direction, (y + 1));
+                hitChunk(x - direction, y + 1);
+                hitChunk(x, y);
             }
         }
     }
@@ -211,6 +236,8 @@ void FallingSandGame::updateWater(int x, int y){
 
     if((grid[(y + 1) * GRID_WIDTH + x] & ID_MASK) == AIR_ID) {
         swap(x, y, x, y + 1);
+        hitChunk(x, y + 1);
+        hitChunk(x, y);
     } 
 
     //else something is below the water, so it moves left or right
@@ -227,11 +254,15 @@ void FallingSandGame::updateWater(int x, int y){
 
         if (openSpace != 0) {
             swap(x, y, x + openSpace, y);
+            hitChunk(x + openSpace, y);
+            hitChunk(x, y);
         }
         else{
             openSpace = searchHorizontallyForOpenSpace(x, y, -direction, rng_val % 4 + 1);
             if (openSpace != 0) {
                 swap(x, y, x + openSpace, y);
+                hitChunk(x + openSpace, y);
+                hitChunk(x, y);
             }
         }
     }
@@ -244,17 +275,29 @@ NOTE: ONLY USE FOR WATER IN THE MEANTIME
 
 */ 
 int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces) {
+    
+    int targetElementId = 0;
     for (int i = 1; i <= numSpaces; i++) {
-
-        int targetElementId = grid[y * GRID_WIDTH + (x + i*direction)] & ID_MASK;
-        if (xInbounds(x + i*direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
+        targetElementId = grid[y * GRID_WIDTH + (x + i * direction)] & ID_MASK;
+        
+        if (xInbounds(x + i * direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
             continue;
-        }
-        else {
-            return (i - 1) * direction; // returns value between -numSpaces and numSpaces, including 0
+        } else {
+            // If the previous cell is air, return the offset
+            if ((grid[y * GRID_WIDTH + (x + (i - 1) * direction)] & ID_MASK) == AIR_ID) {
+                return (i - 1) * direction;
+            } else {
+                return 0;
+            }
         }
     }
-    return numSpaces * direction;
+    
+    // If the last cell is air, return the offset
+    if (targetElementId == AIR_ID) {
+        return numSpaces * direction;
+    }
+    
+    return 0;
 }
 
 bool FallingSandGame::isInbounds(int x, int y){
@@ -269,19 +312,101 @@ bool FallingSandGame::yInbounds(int y){
     return (y >= 0 && y < GRID_HEIGHT);
 }
 
+void FallingSandGame::hitChunk(int absoluteX, int absoluteY){
+    
+
+    int chunkX = absoluteX / CHUNK_SIZE;
+    int chunkY = absoluteY / CHUNK_SIZE;
+
+    //update chunk and neighbouring chunks
+    chunks[chunkX][chunkY].computeOnNextFrame = true;
+
+    //if absoluteX or absoluteY is on the edge of a chunk, then we need to compute the neighbouring chunk
+    if(absoluteX % CHUNK_SIZE == 0 && chunkX > 0){
+        chunks[chunkX - 1][chunkY].computeOnNextFrame = true;
+    }
+    if(absoluteX % CHUNK_SIZE == CHUNK_SIZE - 1 && chunkX < GRID_WIDTH / CHUNK_SIZE - 1){
+        chunks[chunkX + 1][chunkY].computeOnNextFrame = true;
+    }
+    if(absoluteY % CHUNK_SIZE == 0 && chunkY > 0){
+        chunks[chunkX][chunkY - 1].computeOnNextFrame = true;
+    }
+    if(absoluteY % CHUNK_SIZE == CHUNK_SIZE - 1 && chunkY < GRID_HEIGHT / CHUNK_SIZE - 1){
+        chunks[chunkX][chunkY + 1].computeOnNextFrame = true;
+    }
+
+}
+
+void FallingSandGame::updateChunkBools(){
+    for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
+        for (int j = 0; j < GRID_HEIGHT / CHUNK_SIZE; j++) {
+            chunks[i][j].computeOnCurrentFrame = chunks[i][j].computeOnNextFrame;
+            chunks[i][j].computeOnNextFrame = false;
+        }
+    }
+}
+
 void FallingSandGame::update(){
 
-    //want to loop over the grid from bottom to top, left to right
-    for(int y = GRID_HEIGHT - 1; y >= 0; y--){
-        for(int x = 0; x < GRID_WIDTH; x++){
-            switch(grid[y*GRID_WIDTH + x] & ID_MASK){
+    updateChunkBools();
+
+    for(int y = GRID_HEIGHT/CHUNK_SIZE - 1; y >= 0; y--){
+        for(int rowOfY = CHUNK_SIZE - 1; rowOfY >= 0; rowOfY--){
+            for(int x = 0; x < GRID_WIDTH/CHUNK_SIZE; x++){
+                if(chunks[x][y].computeOnCurrentFrame){
+                    updateRowChunk(x, y, rowOfY);
+                }
+            }
+        }
+    }
+}
+
+
+void FallingSandGame::updateRowChunk(int chunkX, int chunkY, int row){
+
+
+    u32 rng_val = rng();        //to prevent Left Water and right Sand, or atleast I think it should???
+
+    if (rng_val % 2 == 0) {     //update left to right
+        
+        for(int i = 0; i < CHUNK_SIZE; i++){        
+            int x = chunkX * CHUNK_SIZE + i;
+            int y = chunkY * CHUNK_SIZE + row;
+
+            int element = grid[y * GRID_WIDTH + x] & ID_MASK;
+
+            switch(element){
                 case SAND_ID:
                     updateSand(x, y);
                     break;
                 case WATER_ID:
                     updateWater(x, y);
                     break;
-                case STONE_ID:  //stone doesn't do anything
+                case STONE_ID:
+                    //updateStone(x, y);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+    return; 
+    }
+    else{                   //update right to left
+        for(int i = CHUNK_SIZE - 1; i >= 0; i--){
+            int x = chunkX * CHUNK_SIZE + i;
+            int y = chunkY * CHUNK_SIZE + row;
+
+            int element = grid[y * GRID_WIDTH + x] & ID_MASK;
+
+            switch(element){
+                case SAND_ID:
+                    updateSand(x, y);
+                    break;
+                case WATER_ID:
+                    updateWater(x, y);
+                    break;
+                case STONE_ID:
                     //updateStone(x, y);
                     break;
                 default:
@@ -301,6 +426,24 @@ void FallingSandGame::drawCursor(int* image_buffer_pointer){
     for(int i = 0; i < CURSOR_LENGTH; i++){
         for(int j = 0; j < CURSOR_LENGTH; j++){
             image_buffer_pointer[(cursor.y + i) * GRID_WIDTH + cursor.x + j] = cursor.colour;
+        }
+    }
+}
+
+void FallingSandGame::drawActiveChunks(int* image_buffer_pointer){
+    //want to draw a red border around the chunks that are active
+    for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
+        for (int j = 0; j < GRID_HEIGHT / CHUNK_SIZE; j++) {
+            if (chunks[i][j].computeOnCurrentFrame) {
+                for (int k = 0; k < CHUNK_SIZE; k++) {
+                    image_buffer_pointer[(j * CHUNK_SIZE + k) * GRID_WIDTH + i * CHUNK_SIZE] = COLOUR_RED;
+                    image_buffer_pointer[(j * CHUNK_SIZE + k) * GRID_WIDTH + i * CHUNK_SIZE + CHUNK_SIZE - 1] = COLOUR_RED;
+                }
+                for (int k = 0; k < CHUNK_SIZE; k++) {
+                    image_buffer_pointer[j * CHUNK_SIZE * GRID_WIDTH + i * CHUNK_SIZE + k] = COLOUR_RED;
+                    image_buffer_pointer[(j + 1) * CHUNK_SIZE * GRID_WIDTH + i * CHUNK_SIZE + k] = COLOUR_RED;
+                }
+            }
         }
     }
 }
