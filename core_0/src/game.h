@@ -2,7 +2,6 @@
 #define GAME_H
 
 #include "common.h"
-#include <xsysmon.h>
 
 // Colours
 // 0x000000F0 Red
@@ -21,7 +20,7 @@
 #define COLOUR_OIL      0x00F0F000
 #define COLOUR_FIRE     0x00F000F0
 
-#define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air
+#define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
 
 #define AIR_ID          (0x00000000)
 #define SAND_ID         (0x00000001)
@@ -39,18 +38,7 @@
 #define rng() Xil_In32(XPAR_AXI_RNG_0_S00_AXI_BASEADDR)
 
 //USER INPUT DEFINES
-#define INCREASE_SPEED (1 << 7) //not used in game class but in main.cc
-
-// enum class ElementType {
-//     AIR,
-//     SAND,
-//     WATER,
-//     STONE,
-//     SALT,
-//     LAVA,
-//     TEMP1,
-//     TEMP2
-// };
+#define CHANGE_SPEED (1 << 7) //not used in game class but in main.cc
 
 //game class
 class FallingSandGame{
@@ -89,10 +77,10 @@ class FallingSandGame{
         int getElement(short input);
         int getColourModifier(int element);
 
-        XSysMon SysMonInst;
-        XSysMon_Config *ConfigPtr;
-        XSysMon *SysMonInstPtr = &SysMonInst;
-        u16 VpVnData, VAux0Data;
+        // XSysMon SysMonInst;
+        // XSysMon_Config *ConfigPtr;
+        // XSysMon *SysMonInstPtr = &SysMonInst;
+        // u16 VpVnData, VAux0Data;
 
 };
 

@@ -1,6 +1,8 @@
-#include <stdio.h>
+#ifndef JOYSTICK_H
+#define JOYSTICK_H
 
-enum direction{N=0x4, NE=0x5, E=0x1, SE=0x9, S=0x8, SW=0xA, W=0x2, NW=0x6, C=0x0};
+#include <stdio.h>
+#include "common.h"
 
 #define UPPER_THRESH 40000
 #define LOWER_THRESH 20000
@@ -57,3 +59,5 @@ enum direction parse_dir(u16 VpVn_channel, u16 VAux_channel) {
 
 	return (direction)dir;
 }
+
+#endif

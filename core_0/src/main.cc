@@ -12,16 +12,22 @@
 #include "xil_printf.h"
 #include "xpseudo_asm.h"
 #include "platform.h"
+#include "joystick.h"		//included in common.h
+#include <xsysmon.h>
 
 #define sev()           __asm__("sev")
 #define CPU1STARTADR    0xfffffff0
 #define COMM_VAL        (*(volatile unsigned long *)(0xFFFF0000))
 
 XSysMon SysMonInst;
+XSysMon_Config *ConfigPtr;
+XSysMon *SysMonInstPtr = &SysMonInst;
+u16 VpVnData, VAux0Data;
 
 volatile bool RESET_BUTTON_PRESSED_FLAG = false;
+volatile bool STOP_TIME_FLAG = false;
 
-userInput_t userInput = {0, 0, 0, 0, 0};
+userInput_t userInput = {0, 0, 0, 0, 0, C};
 
 void setUserInput(userInput_t input);
 
@@ -48,10 +54,16 @@ int main(){
 		return 1;
 	}
 
+	ConfigPtr = XSysMon_LookupConfig(XPAR_SYSMON_0_DEVICE_ID);
+
+	XSysMon_CfgInitialize(SysMonInstPtr, ConfigPtr, ConfigPtr->BaseAddress);
+
+	// Wait for the end of the ADC conversion
+	while ((XSysMon_GetStatus(SysMonInstPtr) & XSM_SR_EOS_MASK) != XSM_SR_EOS_MASK);
 
 
 	int * image_buffer_pointer = (int *)IMAGE_BUFFER_BASE_ADDR;
-	int * intermediate_buffer = (int *)0x020BB00C;
+	int * intermediate_buffer = (int *)INTERMEDIATE_BUFFER_BASE_ADDR;
 	int * grid_buffer = (int *)GRID_BUFFER_BASE_ADDR;
 
 	memset(image_buffer_pointer, 0, NUM_BYTES_BUFFER);
@@ -65,15 +77,18 @@ int main(){
 		setUserInput(userInput);
 		game.handleInput(&userInput);
 		
-		game.update();
+		if(!STOP_TIME_FLAG){
+			game.update();
+		}
 
-		//render game state		//we can avoid a memcpy by using the in between bits for RGB
+
+		//want to draw UI on the intermediate buffer
 		memcpy(intermediate_buffer, grid_buffer, NUM_BYTES_BUFFER);
 
 		//draw the cursor on top of the grid
 		game.drawCursor(intermediate_buffer);
 
-				//render game state		//we can avoid a memcpy by using the in between bits for RGB
+		//render game state
 		memcpy(image_buffer_pointer, intermediate_buffer, NUM_BYTES_BUFFER);
 
 		Xil_DCacheFlushRange((u32)image_buffer_pointer, NUM_BYTES_BUFFER);
@@ -99,4 +114,9 @@ void setUserInput(userInput_t input){
 	}
 
 	userInput.switchValues = getSwitchValues();
+
+	VpVnData = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_VPVN);
+	VAux0Data = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_AUX_MIN + 0);
+
+	userInput.joystick_dir = parse_dir(VpVnData, VAux0Data);
 }

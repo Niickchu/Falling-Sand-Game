@@ -1,24 +1,15 @@
 #include "game.h"
 #include "common.h"
 #include "xil_io.h"
-#include <xsysmon.h>
-#include "platform.h"
-#include "joystick.h"
+// #include <xsysmon.h>
+// #include "platform.h"
 
 // LIST OF PERFORMANCE IMPROVEMENTS
 // MAKE GRID COLUMN MAJOR BECAUSE ELEMENTS CHECK VERTICALLY MORE OFTEN THAN HORIZONTALLY
 
 FallingSandGame::FallingSandGame(int* gridPtr){
 
-	ConfigPtr = XSysMon_LookupConfig(XPAR_SYSMON_0_DEVICE_ID);
-
-	XSysMon_CfgInitialize(SysMonInstPtr, ConfigPtr, ConfigPtr->BaseAddress);
-
-	// Wait for the end of the ADC conversion
-	while ((XSysMon_GetStatus(SysMonInstPtr) & XSM_SR_EOS_MASK) != XSM_SR_EOS_MASK);
-
     grid = gridPtr;
-    //initialize elements
     memset(grid, 0, NUM_BYTES_BUFFER);
 
     numParticles = 0;
@@ -31,14 +22,7 @@ void FallingSandGame::handleInput(userInput_t* input){
    //TODO: want bound checks here to make sure cursor does not go off the screen
    //TODO: interface with joystick to move cursor
 
-	u16 VpVnData, VAux0Data;
-
-	VpVnData = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_VPVN);
-	VAux0Data = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_AUX_MIN + 0);
-
-	direction joystick_dir = parse_dir(VpVnData, VAux0Data);
-
-	switch (joystick_dir) {
+	switch (input->joystick_dir) {
 	    case N:
 	        cursor.y -= 2;
 	        break;
@@ -73,9 +57,9 @@ void FallingSandGame::handleInput(userInput_t* input){
 	        break;
 	}
 
-    if (cursor.y > FRAME_HEIGHT - CURSOR_LENGTH - 1) cursor.y = FRAME_HEIGHT - CURSOR_LENGTH - 1;
+    if (cursor.y > FRAME_HEIGHT - CURSOR_LENGTH) cursor.y = FRAME_HEIGHT - CURSOR_LENGTH;
     if (cursor.x < 0) cursor.x = 0;
-    if (cursor.x > FRAME_WIDTH -  CURSOR_LENGTH - 1) cursor.x = FRAME_WIDTH -  CURSOR_LENGTH - 1;
+    if (cursor.x > FRAME_WIDTH -  CURSOR_LENGTH) cursor.x = FRAME_WIDTH -  CURSOR_LENGTH;
     if (cursor.y < 0) cursor.y = 0;
 
     //place an element
@@ -102,29 +86,52 @@ void FallingSandGame::handleInput(userInput_t* input){
 //TODO: change numparticles logic when we have to implement the eraser
 void FallingSandGame::placeElementsAtCursor(int element){
 
-    if ((element & ID_MASK) == STONE_ID) {
-        for(int i = 0; i < CURSOR_LENGTH; i++){
-            for(int j = 0; j < CURSOR_LENGTH; j++){
-                grid[(cursor.y + i) * GRID_WIDTH + cursor.x + j] = element + getColourModifier(element);
-                
-            }
-        }
-        return;
-    }
-    
-    for(int i = 0; i < CURSOR_LENGTH; i++){
-        for(int j = 0; j < CURSOR_LENGTH; j++){
-            if(grid[(cursor.y + i) * GRID_WIDTH + cursor.x + j] == AIR_ID && (rng() > 13)){
 
-            	grid[(cursor.y + i) * GRID_WIDTH + cursor.x + j] = element + getColourModifier(element);
-
-                numParticles++;
-                if (numParticles >= MAX_NUM_PARTICLES) {
-                    return;
+    if (element == COLOUR_AIR){     //ERASER
+        for(int i = 0; i < CURSOR_LENGTH; i++) {
+            for(int j = 0; j < CURSOR_LENGTH; j++) {
+                int index = (cursor.y + i) * GRID_WIDTH + cursor.x + j;
+                if (grid[index] != AIR_ID) {
+                    grid[index] = COLOUR_AIR;
+                    numParticles--;
                 }
             }
         }
+
+        //xil_printf("numParticles: %d\n\r", numParticles);
+        return;
+    }    
+
+
+    for(int i = 0; i < CURSOR_LENGTH; i++) {
+        for(int j = 0; j < CURSOR_LENGTH; j++) {
+
+            int index = (cursor.y + i) * GRID_WIDTH + cursor.x + j;
+            if (grid[index] == AIR_ID) {
+
+                if ((element & ID_MASK) == STONE_ID) {  // No RNG for stone
+                    grid[index] = element + getColourModifier(element);
+                    numParticles++;
+                    if (numParticles >= MAX_NUM_PARTICLES) {
+                        return;
+                    }
+                } 
+                
+                else {  // For other elements with RNG
+                    if (rng() > 13) {
+                        grid[index] = element + getColourModifier(element);
+                        numParticles++;
+                        if (numParticles >= MAX_NUM_PARTICLES) {
+                            return;
+                        }
+                    }
+                }
+
+            }
+        }
     }
+
+    //xil_printf("numParticles: %d\n\r", numParticles);
 }
 
 int FallingSandGame::getColourModifier(int element){
@@ -201,7 +208,6 @@ void FallingSandGame::updateSand(int x, int y) {
 
 void FallingSandGame::updateWater(int x, int y){
     //water falls first, when it hits the ground it moves randomly left or right by x distance
-    //TODO: implement randomness in the direction of water flow
 
     if((grid[(y + 1) * GRID_WIDTH + x] & ID_MASK) == AIR_ID) {
         swap(x, y, x, y + 1);
@@ -228,6 +234,16 @@ void FallingSandGame::updateWater(int x, int y){
         }
     }
 }
+
+// // direction = -1 for left, 1 for right
+// int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces) {
+//     for (int i = 1; i <= numSpaces; i++) {
+//         if (xInbounds(x + i*direction) && (grid[y * GRID_WIDTH + (x + i*direction)] & ID_MASK) == AIR_ID) {
+//             return i*direction;
+//         }
+//     }
+//     return 0;
+// }
 
 bool FallingSandGame::isInbounds(int x, int y){
     return (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT);

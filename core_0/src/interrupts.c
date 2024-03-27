@@ -138,7 +138,8 @@ static void BTN_Handler(void *InstancePtr){
 		case RIGHT_BUTTON_MASK: //8
 			break;
 
-		case UP_BUTTON_MASK: //16
+		case UP_BUTTON_MASK: //16	stops time
+			STOP_TIME_FLAG = !STOP_TIME_FLAG;
 			break;
 
 		default:
