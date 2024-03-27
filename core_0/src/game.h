@@ -57,6 +57,8 @@ class FallingSandGame{
         bool xInbounds(int x);
         bool yInbounds(int y);
 
+        int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces);
+
         int* grid;
         
         cursor_t cursor;

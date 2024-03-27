@@ -221,29 +221,41 @@ void FallingSandGame::updateWater(int x, int y){
             direction = -1;
         }
 
-        int targetElementId = grid[y * GRID_WIDTH + (x + direction)] & ID_MASK;
-        if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
-            swap(x, y, x + direction, y);
-        } 
+        int openSpace = searchHorizontallyForOpenSpace(x, y, direction, rng_val % 4 + 1);   //direction is now the number of spaces to move left or right
+        //bound is already checked in searchHorizontallyForOpenSpace
+        //first check rng direction
+
+        if (openSpace != 0) {
+            swap(x, y, x + openSpace, y);
+        }
         else{
-            targetElementId = grid[y * GRID_WIDTH + (x - direction)] & ID_MASK;
-            if (xInbounds(x - direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
-                swap(x, y, x - direction, y);
-            
+            openSpace = searchHorizontallyForOpenSpace(x, y, -direction, rng_val % 4 + 1);
+            if (openSpace != 0) {
+                swap(x, y, x + openSpace, y);
             }
         }
     }
 }
 
-// // direction = -1 for left, 1 for right
-// int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces) {
-//     for (int i = 1; i <= numSpaces; i++) {
-//         if (xInbounds(x + i*direction) && (grid[y * GRID_WIDTH + (x + i*direction)] & ID_MASK) == AIR_ID) {
-//             return i*direction;
-//         }
-//     }
-//     return 0;
-// }
+/*
+
+direction = -1 for left, 1 for right
+NOTE: ONLY USE FOR WATER IN THE MEANTIME
+
+*/ 
+int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces) {
+    for (int i = 1; i <= numSpaces; i++) {
+
+        int targetElementId = grid[y * GRID_WIDTH + (x + i*direction)] & ID_MASK;
+        if (xInbounds(x + i*direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
+            continue;
+        }
+        else {
+            return (i - 1) * direction; // returns value between -numSpaces and numSpaces, including 0
+        }
+    }
+    return numSpaces * direction;
+}
 
 bool FallingSandGame::isInbounds(int x, int y){
     return (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT);
