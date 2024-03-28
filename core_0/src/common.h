@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define FRAME_WIDTH         (640)
+#define FRAME_WIDTH         (640)	//test change
 #define FRAME_HEIGHT        (480)
 #define GRID_WIDTH          FRAME_WIDTH
 #define GRID_HEIGHT         FRAME_HEIGHT
