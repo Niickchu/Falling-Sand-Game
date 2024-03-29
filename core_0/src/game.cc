@@ -220,13 +220,10 @@ void FallingSandGame::updateSand(int x, int y) {
 
 void FallingSandGame::updateWater(int x, int y){
     //water falls first, when it hits the ground it moves randomly left or right by x distance
-
-
     //saltwater is heavier than freshwater, so it sinks to the bottom
     //give it the option to swap with water below, then do the below logic normally
 
     int targetElementId = grid[(y + 1) * GRID_WIDTH + x] & ID_MASK;
-
     bool isSaltWater = grid[y * GRID_WIDTH + x] & IN_ALT_STATE; //we already know its water, so we just need to check if its salt water
 
     if(isSaltWater && (targetElementId == WATER_ID)){
@@ -240,7 +237,6 @@ void FallingSandGame::updateWater(int x, int y){
     else if (targetElementId == SALT_ID && !isSaltWater) {   //fall into salt
         saltifyWater(x, y + 1);
         grid[y * GRID_WIDTH + x] = COLOUR_AIR;
-        hitChunk(x, y + 1);
         hitChunk(x, y);
     }
 
@@ -253,7 +249,6 @@ void FallingSandGame::updateWater(int x, int y){
         if (saltEncountered) {      //salt was encountered, so saltify the water
             saltifyWater(x + openSpace, y + 1);
             grid[y * GRID_WIDTH + x] = COLOUR_AIR;
-            hitChunk(x + openSpace, y + 1);
             hitChunk(x, y);
         }
         
@@ -266,7 +261,6 @@ void FallingSandGame::updateWater(int x, int y){
             if (saltEncountered) {
                 saltifyWater(x + openSpace, y + 1);
                 grid[y * GRID_WIDTH + x] = COLOUR_AIR;
-                hitChunk(x + openSpace, y + 1);
                 hitChunk(x, y);
             }
             else
@@ -402,6 +396,9 @@ void FallingSandGame::updateFire(int x, int y){
 void FallingSandGame::saltifyWater(int targetX, int targetY){
     //set flag to true, change colour
     grid[targetY * GRID_WIDTH + targetX] = COLOUR_SALT_WATER + WATER_ID + IN_ALT_STATE;
+
+    //update the chunk that the salt water is in
+    hitChunk(targetX, targetY);
 }
 
 int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces, bool isSaltWater, bool* saltEncountered){
@@ -427,16 +424,8 @@ int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction,
     return numSpaces * direction;
 }
 
-bool FallingSandGame::isInbounds(int x, int y){
-    return (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT);
-}
-
 bool FallingSandGame::xInbounds(int x){
     return (x >= 0 && x < GRID_WIDTH);
-}
-
-bool FallingSandGame::yInbounds(int y){
-    return (y >= 0 && y < GRID_HEIGHT);
 }
 
 void FallingSandGame::hitChunk(int absoluteX, int absoluteY){
