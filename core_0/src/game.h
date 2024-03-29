@@ -107,7 +107,7 @@ class FallingSandGame{
         void updateFire(int x, int y);
         void updateOil(int x, int y);
 
-        void saltifyWater(int waterX, int waterY);
+        void waterSaltInteraction(int sourceX, int sourceY, int targetX, int targetY);
         bool isFreshWater(int element);
         void placeElementsAtCursor(int element);
         int getRandomDirection();
