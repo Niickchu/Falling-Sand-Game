@@ -77,9 +77,7 @@ class FallingSandGame{
 
     private:
     
-        bool isInbounds(int x, int y);
         bool xInbounds(int x);
-        bool yInbounds(int y);
 
         int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces, bool isSaltWater, bool* saltEncountered);
 
@@ -110,7 +108,7 @@ class FallingSandGame{
         void updateOil(int x, int y);
 
         void saltifyWater(int waterX, int waterY);
-
+        bool isFreshWater(int element);
         void placeElementsAtCursor(int element);
         int getRandomDirection();
 
