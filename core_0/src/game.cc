@@ -201,24 +201,18 @@ void FallingSandGame::updateSand(int x, int y) {
 
     if(targetElementId == AIR_ID || targetElementId == WATER_ID) {
         swap(x, y, x, y + 1);
-        hitChunk(x, y + 1);
-        hitChunk(x, y);
     } 
     else {  
         int direction = getRandomDirection();
 
         targetElementId = grid[(y + 1) * GRID_WIDTH + (x + direction)] & ID_MASK;
         if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
-            swap(x, y, x + direction, (y + 1));
-            hitChunk(x + direction, y + 1);
-            hitChunk(x, y); //because sand may move away from a chunk border, so need to check where it moves from as well
+            swap(x, y, x + direction, y + 1);
         } 
         else if (xInbounds(x - direction)) {
             targetElementId = grid[(y + 1) * GRID_WIDTH + (x - direction)] & ID_MASK;
             if (targetElementId == AIR_ID || targetElementId == WATER_ID) {
-                swap(x, y, x - direction, (y + 1));
-                hitChunk(x - direction, y + 1);
-                hitChunk(x, y);
+                swap(x, y, x - direction, y + 1);
             }
         }
     }
@@ -237,15 +231,11 @@ void FallingSandGame::updateWater(int x, int y){
 
     if(isSaltWater && (targetElementId == WATER_ID)){
         swap(x, y, x, y + 1);
-        hitChunk(x, y + 1);
-        hitChunk(x, y);
     }
 
 
     if((targetElementId) == AIR_ID) {       //fall into air
         swap(x, y, x, y + 1);
-        hitChunk(x, y + 1);
-        hitChunk(x, y);
     } 
     else if (targetElementId == SALT_ID && !isSaltWater) {   //fall into salt
         saltifyWater(x, y + 1);
@@ -258,7 +248,7 @@ void FallingSandGame::updateWater(int x, int y){
     else {
         int direction = getRandomDirection();
         bool saltEncountered = false;
-        int openSpace = searchHorizontallyForOpenSpace(x, y, direction, rng_val % 4 + 1, isSaltWater, &saltEncountered);
+        int openSpace = searchHorizontallyForOpenSpace(x, y, direction, rng() % 4 + 1, isSaltWater, &saltEncountered);
 
         if (saltEncountered) {      //salt was encountered, so saltify the water
             saltifyWater(x + openSpace, y + 1);
@@ -269,11 +259,9 @@ void FallingSandGame::updateWater(int x, int y){
         
         else if (openSpace != 0) {
             swap(x, y, x + openSpace, y);
-            hitChunk(x + openSpace, y);
-            hitChunk(x, y);
         }
         else{
-            openSpace = searchHorizontallyForOpenSpace(x, y, -direction, rng_val % 4 + 1, isSaltWater, &saltEncountered);
+            openSpace = searchHorizontallyForOpenSpace(x, y, -direction, rng() % 4 + 1, isSaltWater, &saltEncountered);
 
             if (saltEncountered) {
                 saltifyWater(x + openSpace, y + 1);
@@ -285,8 +273,6 @@ void FallingSandGame::updateWater(int x, int y){
 
             if (openSpace != 0) {
                 swap(x, y, x + openSpace, y);
-                hitChunk(x + openSpace, y);
-                hitChunk(x, y);
             }
         }
     }
@@ -318,8 +304,6 @@ void FallingSandGame::updateSalt(int x, int y){
         }
 
         swap(x, y, x, y + 1);
-        hitChunk(x, y + 1);
-        hitChunk(x, y);
     } 
     else {  
         int direction = getRandomDirection();
@@ -338,9 +322,7 @@ void FallingSandGame::updateSalt(int x, int y){
                 return;
             }
 
-            swap(x, y, x + direction, (y + 1));
-            hitChunk(x + direction, y + 1);
-            hitChunk(x, y); //because sand may move away from a chunk border, so need to check where it moves from as well
+            swap(x, y, x + direction, y + 1);
         } 
         else if (xInbounds(x - direction)) {
             targetElementId = grid[(y + 1) * GRID_WIDTH + (x - direction)] & ID_MASK;
@@ -358,8 +340,6 @@ void FallingSandGame::updateSalt(int x, int y){
                 }
 
                 swap(x, y, x - direction, (y + 1));
-                hitChunk(x - direction, y + 1);
-                hitChunk(x, y);
             }
         }
     }
@@ -378,8 +358,6 @@ void FallingSandGame::updateLava(int x, int y){
 
     if(targetElementId == AIR_ID) {       //fall into air
         swap(x, y, x, y + 1);
-        hitChunk(x, y + 1);
-        hitChunk(x, y);
     } 
     else if (targetElementId == WATER_ID) {   //fall into water
         grid[y * GRID_WIDTH + x] = COLOUR_STONE + STONE_ID;
@@ -392,16 +370,12 @@ void FallingSandGame::updateLava(int x, int y){
 
         targetElementId = grid[(y) * GRID_WIDTH + (x + direction)] & ID_MASK;
         if (xInbounds(x + direction) && (targetElementId == AIR_ID)) {
-            swap(x, y, x + direction, (y));
-            hitChunk(x + direction, y + 1);
-            hitChunk(x, y);
+            swap(x, y, x + direction, y);
         } 
         else if (xInbounds(x - direction)) {
             targetElementId = grid[(y) * GRID_WIDTH + (x - direction)] & ID_MASK;
             if (targetElementId == AIR_ID) {
                 swap(x, y, x - direction, (y));
-                hitChunk(x - direction, y + 1);
-                hitChunk(x, y);
             }
         }
     }
@@ -596,6 +570,9 @@ void FallingSandGame::swap(int x1, int y1, int x2, int y2){     //classic swap f
     int temp = grid[y1*GRID_WIDTH + x1]; //grid[y1][x1]
     grid[y1*GRID_WIDTH + x1] = grid[y2*GRID_WIDTH + x2]; //grid[y1][x1] = grid[y2][x2]
     grid[y2*GRID_WIDTH + x2] = temp; //grid[y2][x2] = temp
+
+    hitChunk(x1, y1);
+    hitChunk(x2, y2);
 }
 
 void FallingSandGame::drawCursor(int* image_buffer_pointer){
