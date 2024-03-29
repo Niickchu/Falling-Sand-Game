@@ -3,6 +3,11 @@
 
 #include "common.h"
 
+
+//Salt behaves like sand, except in contact with water, where it is automatically absorbed and turns it into salt water, which has a different colour and is not capable of absorbing further salt.
+
+//Lava flows like water, and turns stone into lava on contact. Lava removes sand on contact. Lava turns into stone upon contact with water. Lava has no interaction with salt, and salt water is equally capable of turning lava back to stone.
+
 // Colours
 // 0x000000F0 Red
 // 0x0000F000 Green
@@ -15,13 +20,14 @@
 #define COLOUR_SAND     0x0000F0F0
 #define COLOUR_WATER    0x00F04000
 #define COLOUR_STONE    0x00B0A0A0
-#define COLOUR_SALT     0x00F0F0F0
+#define COLOUR_SALT     0x00E0E0E0
 #define COLOUR_LAVA     0x000000F0
 #define COLOUR_OIL      0x00F0F000
 #define COLOUR_FIRE     0x00F000F0
+#define COLOUR_SALT_WATER 0x00F0C050
+#define BORDER_COLOUR   0x00606060
 
-#define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
-
+//placeable elements
 #define AIR_ID          (0x00000000)
 #define SAND_ID         (0x00000001)
 #define WATER_ID        (0x00000002)
@@ -30,10 +36,19 @@
 #define LAVA_ID         (0x00000005)
 #define OIL_ID          (0x00000006)        //beyond the scope of this project
 #define FIRE_ID         (0x00000007)        //beyond the scope of this project, might do anyway
+#define BORDER_ID       (0x00000008)
+
+#define IN_ALT_STATE       (0x01000000)
+
+#define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
+
+
+
 
 #define CHUNK_SIZE     (20)
 
 #define ID_MASK         (0x0000000F)
+#define ID_MASK_ALT     (0x0100000F)
 
 #define MAX_NUM_PARTICLES (20000)
 
@@ -55,11 +70,8 @@ class FallingSandGame{
         FallingSandGame(int* gridPtr);
         void handleInput(userInput_t* input);
         void update();
-        //void render(int* imageBuffer);  //no longer needed
 
         void drawCursor(int* image_buffer_pointer);
-
-
         void drawActiveChunks(int* image_buffer_pointer);
 
     private:
@@ -68,7 +80,9 @@ class FallingSandGame{
         bool xInbounds(int x);
         bool yInbounds(int y);
 
-        int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces);
+        int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces, bool isSaltWater, bool* saltEncountered);
+
+        void makeBorder();
 
 
         chunkBools_t chunks[(GRID_WIDTH / CHUNK_SIZE)][(GRID_HEIGHT / CHUNK_SIZE)];     //x and y swapped when compared to row major format for the grid, bcuz standard
@@ -85,22 +99,22 @@ class FallingSandGame{
         int particleColours[8] = {COLOUR_AIR, COLOUR_SAND, COLOUR_WATER, COLOUR_STONE, COLOUR_SALT, COLOUR_LAVA, COLOUR_OIL, COLOUR_FIRE};
         int particleIDs[8] = {AIR_ID, SAND_ID, WATER_ID, STONE_ID, SALT_ID, LAVA_ID, OIL_ID, FIRE_ID};
 
-
         void updateSand(int x, int y);
         void updateWater(int x, int y);
         void updateStone(int x, int y);
+        void updateSalt(int x, int y);
+        void updateLava(int x, int y);
+
+        void updateFire(int x, int y);
+        void updateOil(int x, int y);
+
+        void saltifyWater(int waterX, int waterY);
 
         void placeElementsAtCursor(int element);
 
         void swap(int x1, int y1, int x2, int y2);
         int getElement(short input);
         int getColourModifier(int element);
-
-        // XSysMon SysMonInst;
-        // XSysMon_Config *ConfigPtr;
-        // XSysMon *SysMonInstPtr = &SysMonInst;
-        // u16 VpVnData, VAux0Data;
-
 };
 
 #endif
