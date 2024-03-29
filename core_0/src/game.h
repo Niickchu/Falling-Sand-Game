@@ -112,6 +112,7 @@ class FallingSandGame{
         void saltifyWater(int waterX, int waterY);
 
         void placeElementsAtCursor(int element);
+        int getRandomDirection();
 
         void swap(int x1, int y1, int x2, int y2);
         int getElement(short input);
