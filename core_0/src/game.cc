@@ -246,7 +246,7 @@ void FallingSandGame::updateWater(int x, int y){
         bool saltEncountered = false;
         int openSpace = searchHorizontallyForOpenSpace(x, y, direction, rng() % 4 + 1, isSaltWater, &saltEncountered);
 
-        if (saltEncountered) {      //salt was encountered, so saltify the water
+        if (saltEncountered) {
             saltifyWater(x + openSpace, y + 1);
             grid[y * GRID_WIDTH + x] = COLOUR_AIR;
             hitChunk(x, y);
@@ -263,9 +263,7 @@ void FallingSandGame::updateWater(int x, int y){
                 grid[y * GRID_WIDTH + x] = COLOUR_AIR;
                 hitChunk(x, y);
             }
-            else
-
-            if (openSpace != 0) {
+            else if (openSpace != 0) {
                 swap(x, y, x + openSpace, y);
             }
         }
@@ -275,39 +273,30 @@ void FallingSandGame::updateWater(int x, int y){
 void FallingSandGame::updateSalt(int x, int y){
     //salt behaves like sand, but also dissolves in water to set water isSaltWater to true + change colour
 
-    // if at the bottom of the grid, then it does not move
-    if(y == GRID_HEIGHT - 1){
-        return;
-    }
+    if(y == GRID_HEIGHT - 1) return;
 
-    // if the sand is not at the bottom of the grid, then it looks down
-    int targetElementId = grid[(y + 1) * GRID_WIDTH + x] & ID_MASK;
+    int targetElement = grid[(y + 1) * GRID_WIDTH + x];
+    int targetElementId = targetElement & ID_MASK;
 
-    if(targetElementId == AIR_ID || targetElementId == WATER_ID) {
-
-        //if water and not salt water, then saltify the water
-        if(targetElementId == WATER_ID && !(grid[(y + 1) * GRID_WIDTH + x] & IN_ALT_STATE)){
-            saltifyWater(x, y + 1);
-            hitChunk(x, y + 1);
-            hitChunk(x, y);
-
-            //also remove the salt
-            grid[y * GRID_WIDTH + x] = COLOUR_AIR;
-
-            return;
-        }
-
+    if(targetElementId == AIR_ID) {
         swap(x, y, x, y + 1);
-    } 
+    }
+    else if (isFreshWater(targetElement)) {   //fall into water
+        saltifyWater(x, y + 1);
+        hitChunk(x, y);
+
+        //also remove the salt
+        grid[y * GRID_WIDTH + x] = COLOUR_AIR;
+    }
     else {  
         int direction = getRandomDirection();
 
-        targetElementId = grid[(y + 1) * GRID_WIDTH + (x + direction)] & ID_MASK;
+        targetElement = grid[(y + 1) * GRID_WIDTH + (x + direction)];   //actually okay to do this because not at bottom of grid and bounds checked later
+        targetElementId = targetElement & ID_MASK;
         if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
 
-            if (targetElementId == WATER_ID && !(grid[(y + 1) * GRID_WIDTH + (x + direction)] & IN_ALT_STATE)) {
+            if (isFreshWater(targetElement)) {
                 saltifyWater(x + direction, y + 1);
-                hitChunk(x + direction, y + 1);
                 hitChunk(x, y);
 
                 //also remove the salt
@@ -319,12 +308,13 @@ void FallingSandGame::updateSalt(int x, int y){
             swap(x, y, x + direction, y + 1);
         } 
         else if (xInbounds(x - direction)) {
-            targetElementId = grid[(y + 1) * GRID_WIDTH + (x - direction)] & ID_MASK;
-            if (targetElementId == AIR_ID || targetElementId == WATER_ID) {
 
-                if (targetElementId == WATER_ID && !(grid[(y + 1) * GRID_WIDTH + (x - direction)] & IN_ALT_STATE)) {
+            targetElement = grid[(y + 1) * GRID_WIDTH + (x - direction)];
+            targetElementId = targetElement & ID_MASK;
+
+            if (targetElementId == AIR_ID || targetElementId == WATER_ID) {
+                if (isFreshWater(targetElement)) {
                     saltifyWater(x - direction, y + 1);
-                    hitChunk(x - direction, y + 1);
                     hitChunk(x, y);
 
                     //also remove the salt
@@ -337,6 +327,10 @@ void FallingSandGame::updateSalt(int x, int y){
             }
         }
     }
+}
+
+bool FallingSandGame::isFreshWater(int element){
+    return (((element & ID_MASK) == WATER_ID) && !(element & IN_ALT_STATE));
 }
 
 void FallingSandGame::updateLava(int x, int y){
