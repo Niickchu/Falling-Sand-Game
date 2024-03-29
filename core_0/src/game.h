@@ -21,11 +21,11 @@
 #define COLOUR_WATER    0x00F04000
 #define COLOUR_STONE    0x00B0A0A0
 #define COLOUR_SALT     0x00E0E0E0
-#define COLOUR_LAVA     0x000000F0
+#define COLOUR_LAVA     0x000040F0
 #define COLOUR_OIL      0x00F0F000
 #define COLOUR_FIRE     0x00F000F0
 #define COLOUR_SALT_WATER 0x00F0C050
-#define BORDER_COLOUR   0x00606060
+#define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
 
 //placeable elements
 #define AIR_ID          (0x00000000)
@@ -36,11 +36,12 @@
 #define LAVA_ID         (0x00000005)
 #define OIL_ID          (0x00000006)        //beyond the scope of this project
 #define FIRE_ID         (0x00000007)        //beyond the scope of this project, might do anyway
-#define BORDER_ID       (0x00000008)
 
-#define IN_ALT_STATE       (0x01000000)
+#define IN_ALT_STATE    (0x01000000)
+#define LIFESPAN_MASK   (0x000F0000)
 
-#define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
+#define BASE_STONE_LIFE (0x00020000)
+
 
 
 
@@ -114,7 +115,7 @@ class FallingSandGame{
 
         void swap(int x1, int y1, int x2, int y2);
         int getElement(short input);
-        int getColourModifier(int element);
+        int getModifiers(int element);
 };
 
 #endif

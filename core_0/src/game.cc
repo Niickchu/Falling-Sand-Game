@@ -120,7 +120,7 @@ void FallingSandGame::placeElementsAtCursor(int element){
             if (grid[index] == AIR_ID) {
 
                 if ((element & ID_MASK) == STONE_ID) {  // No RNG for stone
-                    grid[index] = element + getColourModifier(element);
+                    grid[index] = element + getModifiers(element);
                     numParticles++;
 
                     hitChunk(cursor.x + j, cursor.y + i);
@@ -132,7 +132,7 @@ void FallingSandGame::placeElementsAtCursor(int element){
                 
                 else {  // For other elements with RNG
                     if (rng() > 13) {
-                        grid[index] = element + getColourModifier(element);
+                        grid[index] = element + getModifiers(element);
                         numParticles++;
 
                         hitChunk(cursor.x + j, cursor.y + i);
@@ -150,7 +150,7 @@ void FallingSandGame::placeElementsAtCursor(int element){
     //xil_printf("numParticles: %d\n\r", numParticles);
 }
 
-int FallingSandGame::getColourModifier(int element){
+int FallingSandGame::getModifiers(int element){
 
     u32 rng_val = rng();
 
@@ -163,12 +163,13 @@ int FallingSandGame::getColourModifier(int element){
             return - COLOUR_BLUE*(rng_val);
         case STONE_ID:
             rng_val = rng_val % 2;
-            return - COLOUR_GREEN*(rng_val) - COLOUR_RED*(rng_val) - COLOUR_BLUE*(rng_val);
+            return - COLOUR_GREEN*(rng_val) - COLOUR_RED*(rng_val) - COLOUR_BLUE*(rng_val) + BASE_STONE_LIFE;
         case SALT_ID:
             rng_val = rng_val % 3;
             return - COLOUR_GREEN*(rng_val) - COLOUR_RED*(rng_val) - COLOUR_BLUE*(rng_val);
         case LAVA_ID:
-            return 0;
+            rng_val = rng_val % 5;
+            return - COLOUR_GREEN*(rng_val);
         case OIL_ID:
             return 0;
         case FIRE_ID:
@@ -378,7 +379,49 @@ void FallingSandGame::updateSalt(int x, int y){
 }
 
 void FallingSandGame::updateLava(int x, int y){
-    return;
+    //lava falls first, when it hits the ground it moves randomly left or right by x distance
+
+    // if at the bottom of the grid, then it does not move
+    if(y == GRID_HEIGHT - 1){
+        return;
+    }
+
+    // if the sand is not at the bottom of the grid, then it looks down
+    int targetElementId = grid[(y + 1) * GRID_WIDTH + x] & ID_MASK;
+
+    if(targetElementId == AIR_ID) {       //fall into air
+        swap(x, y, x, y + 1);
+        hitChunk(x, y + 1);
+        hitChunk(x, y);
+    } 
+    else if (targetElementId == WATER_ID) {   //fall into water
+        grid[y * GRID_WIDTH + x] = COLOUR_STONE + STONE_ID;
+        hitChunk(x, y);
+    }
+
+    //else something is below the water, so it moves left or right
+    else {
+        u32 rng_val = rng();
+        int direction = 1;
+        if (rng_val % 2 == 1) {
+            direction = -1;
+        }
+
+        targetElementId = grid[(y + 1) * GRID_WIDTH + (x + direction)] & ID_MASK;
+        if (xInbounds(x + direction) && (targetElementId == AIR_ID)) {
+            swap(x, y, x + direction, (y + 1));
+            hitChunk(x + direction, y + 1);
+            hitChunk(x, y);
+        } 
+        else if (xInbounds(x - direction)) {
+            targetElementId = grid[(y + 1) * GRID_WIDTH + (x - direction)] & ID_MASK;
+            if (targetElementId == AIR_ID) {
+                swap(x, y, x - direction, (y + 1));
+                hitChunk(x - direction, y + 1);
+                hitChunk(x, y);
+            }
+        }
+    }
 }
 
 void FallingSandGame::updateOil(int x, int y){
