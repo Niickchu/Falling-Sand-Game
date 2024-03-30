@@ -22,7 +22,7 @@
 #define COLOUR_STONE    0x00B0A0A0
 #define COLOUR_SALT     0x00E0E0E0
 #define COLOUR_LAVA     0x000040F0
-#define COLOUR_OIL      0x00F0F000
+#define COLOUR_WOOD     0x00F0F000
 #define COLOUR_FIRE     0x00F000F0
 #define COLOUR_SALT_WATER 0x00F0C050
 #define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
@@ -34,7 +34,7 @@
 #define STONE_ID        (0x00000003)
 #define SALT_ID         (0x00000004)
 #define LAVA_ID         (0x00000005)
-#define OIL_ID          (0x00000006)        //beyond the scope of this project
+#define WOOD_ID         (0x00000006)        //beyond the scope of this project
 #define FIRE_ID         (0x00000007)        //beyond the scope of this project, might do anyway
 
 #define IN_ALT_STATE    (0x01000000)
@@ -80,7 +80,7 @@ class FallingSandGame{
     
         bool xInbounds(int x);
 
-        int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces, bool isSaltWater, bool* saltEncountered);
+        int waterSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace);
         int lavaSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace);
         void makeBorder();
 
@@ -96,8 +96,8 @@ class FallingSandGame{
 
         int numParticles;
 
-        int particleColours[8] = {COLOUR_AIR, COLOUR_SAND, COLOUR_WATER, COLOUR_STONE, COLOUR_SALT, COLOUR_LAVA, COLOUR_OIL, COLOUR_FIRE};
-        int particleIDs[8] = {AIR_ID, SAND_ID, WATER_ID, STONE_ID, SALT_ID, LAVA_ID, OIL_ID, FIRE_ID};
+        int particleColours[8] = {COLOUR_AIR, COLOUR_SAND, COLOUR_WATER, COLOUR_STONE, COLOUR_SALT, COLOUR_LAVA, COLOUR_WOOD, COLOUR_FIRE};
+        int particleIDs[8] = {AIR_ID, SAND_ID, WATER_ID, STONE_ID, SALT_ID, LAVA_ID, WOOD_ID, FIRE_ID};
 
         void updateSand(int x, int y);
         void updateWater(int x, int y);
@@ -106,7 +106,7 @@ class FallingSandGame{
         void updateLava(int x, int y);
 
         void updateFire(int x, int y);
-        void updateOil(int x, int y);
+        void updateWood(int x, int y);
 
         void waterSaltInteraction(int sourceX, int sourceY, int targetX, int targetY);
         void lavaSandInteraction(int sandX, int sandY);

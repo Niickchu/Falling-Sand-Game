@@ -1,6 +1,7 @@
 #include "game.h"
 #include "common.h"
 #include "xil_io.h"
+#include "xil_cache.h"
 // #include <xsysmon.h>
 // #include "platform.h"
 
@@ -83,6 +84,14 @@ void FallingSandGame::handleInput(userInput_t* input){
         memset(grid, 0, NUM_BYTES_BUFFER);
         numParticles = 0;
         input->resetGrid = 0;
+
+        for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
+            for (int j = 0; j < GRID_HEIGHT / CHUNK_SIZE; j++) {
+                chunks[i][j] = {false, false};
+            }
+        }
+        
+        Xil_DCacheFlushRange((u32)grid, NUM_BYTES_BUFFER);
    }
 
 }
@@ -170,7 +179,7 @@ int FallingSandGame::getModifiers(int element){
         case LAVA_ID:
             rng_val = rng_val % 5;
             return - COLOUR_GREEN*(rng_val);
-        case OIL_ID:
+        case WOOD_ID:
             return 0;
         case FIRE_ID:
             return 0;
@@ -202,17 +211,30 @@ void FallingSandGame::updateSand(int x, int y) {
     if(targetElementId == AIR_ID || targetElementId == WATER_ID) {
         swap(x, y, x, y + 1);
     } 
+    else if (targetElementId == LAVA_ID){
+        lavaSandInteraction(x, y);
+    }
     else {  
         int direction = getRandomDirection();
 
         targetElementId = grid[(y + 1) * GRID_WIDTH + (x + direction)] & ID_MASK;
-        if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
-            swap(x, y, x + direction, y + 1);
+        if (xInbounds(x + direction)) {
+            targetElementId = grid[(y + 1) * GRID_WIDTH + (x + direction)] & ID_MASK;
+            if (targetElementId == AIR_ID || targetElementId == WATER_ID){
+                swap(x, y, x + direction, y + 1);
+            }
+            if (targetElementId == LAVA_ID) {
+                lavaSandInteraction(x, y);
+            }
+
         } 
         else if (xInbounds(x - direction)) {
             targetElementId = grid[(y + 1) * GRID_WIDTH + (x - direction)] & ID_MASK;
             if (targetElementId == AIR_ID || targetElementId == WATER_ID) {
                 swap(x, y, x - direction, y + 1);
+            }
+            if (targetElementId == LAVA_ID) {
+                lavaSandInteraction(x, y);
             }
         }
     }
@@ -226,41 +248,48 @@ void FallingSandGame::updateWater(int x, int y){
     int targetElementId = grid[(y + 1) * GRID_WIDTH + x] & ID_MASK;
     bool isSaltWater = grid[y * GRID_WIDTH + x] & IN_ALT_STATE; //we already know its water, so we just need to check if its salt water
 
-    if(isSaltWater && (targetElementId == WATER_ID)){
+    if(isSaltWater && (targetElementId == WATER_ID)){       //saltwater is heavier than freshwater
         swap(x, y, x, y + 1);
     }
-
-
     if((targetElementId) == AIR_ID) {       //fall into air
         swap(x, y, x, y + 1);
     } 
     else if (targetElementId == SALT_ID && !isSaltWater) {   //fall into salt
         waterSaltInteraction(x, y, x, y + 1);
     }
+    else if (targetElementId == LAVA_ID) {   //fall into lava
+        lavaWaterInteraction(x, y, x, y + 1);
+    }
 
     //else something is below the water, so it moves left or right
     else {
         int direction = getRandomDirection();
-        bool saltEncountered = false;
-        int openSpace = searchHorizontallyForOpenSpace(x, y, direction, rng() % 4 + 1, isSaltWater, &saltEncountered);
+        int openSpace = 0;
+        int elementIDInWay = waterSearchHorizontally(x, y, direction, rng() % 4 + 1, &openSpace);
 
-        if (saltEncountered) {
-            waterSaltInteraction(x, y, x + openSpace, y + 1);
+        if (elementIDInWay == SALT_ID && !isSaltWater) {
+            waterSaltInteraction(x, y, x + openSpace + direction, y);
         }
-        
-        else if (openSpace != 0) {
+        else if (elementIDInWay == LAVA_ID) {
+            lavaWaterInteraction(x, y, x + openSpace + direction, y);
+        }
+        else if (openSpace != 0) {      //either air, sand, or water was found in range
             swap(x, y, x + openSpace, y);
         }
-        else{
-            openSpace = searchHorizontallyForOpenSpace(x, y, -direction, rng() % 4 + 1, isSaltWater, &saltEncountered);
 
-            if (saltEncountered) {
-                waterSaltInteraction(x, y, x + openSpace, y + 1);
+        else {
+            openSpace = 0;
+            elementIDInWay = waterSearchHorizontally(x, y, -direction, rng() % 4 + 1, &openSpace);
+            if (elementIDInWay == SALT_ID && !isSaltWater) {
+                waterSaltInteraction(x, y, x + openSpace - direction, y);
             }
-            else if (openSpace != 0) {
+            else if (elementIDInWay == LAVA_ID) {
+                lavaWaterInteraction(x, y, x + openSpace - direction, y);
+            }
+            else if (openSpace != 0) {      //either air, sand, or water was found in range
                 swap(x, y, x + openSpace, y);
             }
-        }
+        }   
     }
 }
 
@@ -272,7 +301,7 @@ void FallingSandGame::updateSalt(int x, int y){
     int targetElement = grid[(y + 1) * GRID_WIDTH + x];
     int targetElementId = targetElement & ID_MASK;
 
-    if(targetElementId == AIR_ID) {
+    if(targetElementId == AIR_ID || targetElementId == LAVA_ID) {
         swap(x, y, x, y + 1);
     }
     else if (isFreshWater(targetElement)) {   //fall into water
@@ -283,7 +312,7 @@ void FallingSandGame::updateSalt(int x, int y){
 
         targetElement = grid[(y + 1) * GRID_WIDTH + (x + direction)];   //actually okay to do this because not at bottom of grid and bounds checked later
         targetElementId = targetElement & ID_MASK;
-        if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) {
+        if (xInbounds(x + direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID || targetElementId == LAVA_ID)) {
 
             if (isFreshWater(targetElement)) {
                 waterSaltInteraction(x, y, x + direction, y + 1);
@@ -297,7 +326,7 @@ void FallingSandGame::updateSalt(int x, int y){
             targetElement = grid[(y + 1) * GRID_WIDTH + (x - direction)];
             targetElementId = targetElement & ID_MASK;
 
-            if (targetElementId == AIR_ID || targetElementId == WATER_ID) {
+            if (targetElementId == AIR_ID || targetElementId == WATER_ID || targetElementId == LAVA_ID) {
                 if (isFreshWater(targetElement)) {
                     waterSaltInteraction(x, y, x - direction, y + 1);
                     return;
@@ -336,20 +365,18 @@ void FallingSandGame::updateLava(int x, int y){
         int openSpace = 0;
         int elementIDInWay = lavaSearchHorizontally(x, y, direction, rng() % 2 + 1, &openSpace);
 
-        if (elementIDInWay == SALT_ID) {
-            swap(x, y, x + openSpace, y);
-        }
-        else if (elementIDInWay == STONE_ID) {
-            swap(x, y, x + openSpace, y);
+
+        if (elementIDInWay == STONE_ID) {
+            //swap(x, y, x + openSpace, y);
             lavaStoneInteraction(x + openSpace + direction, y);
         }
         else if (elementIDInWay == SAND_ID) {
-            swap(x, y, x + openSpace, y);
+            //swap(x, y, x + openSpace, y);
             lavaSandInteraction(x + openSpace + direction, y);
         }
         else if (elementIDInWay == WATER_ID) {
-            swap(x, y, x + openSpace, y);
-            lavaWaterInteraction(x, y, x + openSpace + direction, y);   //probably right
+            //swap(x, y, x + openSpace, y);
+            lavaWaterInteraction(x, y, x + openSpace + direction, y);   // could remove + direction i think
         }
         else if (openSpace != 0) {      //air space was found and not water, stone, sand, or salt in range
             swap(x, y, x + openSpace, y);
@@ -358,19 +385,16 @@ void FallingSandGame::updateLava(int x, int y){
             openSpace = 0;
             elementIDInWay = lavaSearchHorizontally(x, y, -direction, rng() % 2 + 1, &openSpace);
 
-            if (elementIDInWay == SALT_ID) {
-                swap(x, y, x + openSpace, y);
-            }
-            else if (elementIDInWay == STONE_ID) {
-                swap(x, y, x + openSpace, y);
+            if (elementIDInWay == STONE_ID) {
+                //swap(x, y, x + openSpace, y);
                 lavaStoneInteraction(x + openSpace - direction, y);
             }
             else if (elementIDInWay == SAND_ID) {
-                swap(x, y, x + openSpace, y);
+                //swap(x, y, x + openSpace, y);
                 lavaSandInteraction(x + openSpace - direction, y);
             }
             else if (elementIDInWay == WATER_ID) {
-                swap(x, y, x + openSpace, y);
+                //swap(x, y, x + openSpace, y);
                 lavaWaterInteraction(x, y, x + openSpace - direction, y);   //probably right
             }
             else if (openSpace != 0) {      //air space was found and not water, stone, sand, or salt in range
@@ -383,10 +407,13 @@ void FallingSandGame::updateLava(int x, int y){
 }
 
 void FallingSandGame::waterSaltInteraction(int sourceX, int sourceY, int targetX, int targetY){
-    //toX and toY become the salt water, fromX and fromY become air
+    //target = where you want the salt to be
+    //source = where the empty spot will be
 
     grid[targetY * GRID_WIDTH + targetX] = COLOUR_SALT_WATER + WATER_ID + IN_ALT_STATE;
     grid[sourceY * GRID_WIDTH + sourceX] = COLOUR_AIR;
+
+    numParticles--;
 
     hitChunk(sourceX, sourceY);
     hitChunk(targetX, targetY);
@@ -395,6 +422,7 @@ void FallingSandGame::waterSaltInteraction(int sourceX, int sourceY, int targetX
 void FallingSandGame::lavaWaterInteraction(int sourceX, int sourceY, int targetX, int targetY){
     
     //target = where you want the stone to be
+    //source = where the empty spot will be
 
     //rules: water evaporates into air, lava becomes stone
 
@@ -402,6 +430,8 @@ void FallingSandGame::lavaWaterInteraction(int sourceX, int sourceY, int targetX
 
     //TODO: maybe place a steam particle somewhere
     grid[sourceY * GRID_WIDTH + sourceX] = COLOUR_AIR;
+
+    numParticles--;
 
     hitChunk(sourceX, sourceY);
     hitChunk(targetX, targetY);
@@ -420,6 +450,7 @@ void FallingSandGame::lavaStoneInteraction(int stoneX, int stoneY){
         }
         else {
             grid[stoneY * GRID_WIDTH + stoneX] = COLOUR_AIR;
+            numParticles--;
         }
     }
 
@@ -431,6 +462,7 @@ void FallingSandGame::lavaSandInteraction(int sandX, int sandY){
     //lava removes sand instantly
 
     grid[sandY * GRID_WIDTH + sandX] = COLOUR_AIR;
+    numParticles--;
 
     hitChunk(sandX, sandY);
 
@@ -445,7 +477,7 @@ int FallingSandGame::getRandomDirection(){
     return direction;
 }
 
-void FallingSandGame::updateOil(int x, int y){
+void FallingSandGame::updateWood(int x, int y){
     return;
 }
 
@@ -455,29 +487,22 @@ void FallingSandGame::updateFire(int x, int y){
 
 
 //TODO: refactor in the form of lavaSearchHorizontally
-int FallingSandGame::searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces, bool isSaltWater, bool* saltEncountered){
+int FallingSandGame::waterSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace){
+    
     for (int i = 1; i <= numSpaces; i++) {
-
         int targetElementId = grid[y * GRID_WIDTH + (x + i*direction)] & ID_MASK;
-        if (xInbounds(x + i*direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) { //2nd or is because saltwater needs to disperse
+        if (xInbounds(x + i*direction) && (targetElementId == AIR_ID || targetElementId == WATER_ID)) { //==Water because saltwater needs to disperse
             continue;
         }
         else {  //if the space is not open, then return the last open space
 
-            //for the case of water, want to check if it was salt, then return the salt spot to be saltified
-            if((targetElementId == SALT_ID) && !isSaltWater){
-                
-                //set bool passed by reference to true
-                *saltEncountered = true;
-                return i * direction;
-            }
-
-            return (i - 1) * direction; // returns value between -numSpaces and numSpaces, including 0
+            *openSpace = (i - 1) * direction; // returns value between -numSpaces and numSpaces, including 0
+            return targetElementId;
         }
     }
-    return numSpaces * direction;
+    *openSpace = numSpaces * direction;
+    return AIR_ID;
 }
-
 
 int FallingSandGame::lavaSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace) {
     //want to return the element ID that is in the way of the lava, so that we can interact with it
@@ -580,13 +605,9 @@ void FallingSandGame::updateRowChunk(int chunkX, int chunkY, int row){
                     break;
                 case LAVA_ID:
                     updateLava(x, y);
-
-                    //due to the complex nature of lava, just keep its chunks active
-                    // hitChunk(x, y);
-
                     break;
-                case OIL_ID:
-                    updateOil(x, y);
+                case WOOD_ID:
+                    updateWood(x, y);
                     break;
                 case FIRE_ID:
                     updateFire(x, y);
@@ -621,8 +642,8 @@ void FallingSandGame::updateRowChunk(int chunkX, int chunkY, int row){
                 case LAVA_ID:
                     updateLava(x, y);
                     break;
-                case OIL_ID:
-                    updateOil(x, y);
+                case WOOD_ID:
+                    updateWood(x, y);
                     break;
                 case FIRE_ID:
                     updateFire(x, y);
