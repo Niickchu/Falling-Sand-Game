@@ -39,8 +39,9 @@
 
 #define IN_ALT_STATE    (0x01000000)
 #define LIFESPAN_MASK   (0x000F0000)
+#define LIFEBIT_MASK    (0x00010000)
 
-#define BASE_STONE_LIFE (0x00020000)
+#define BASE_STONE_LIFE (0x00040000)
 
 
 
@@ -80,7 +81,7 @@ class FallingSandGame{
         bool xInbounds(int x);
 
         int searchHorizontallyForOpenSpace(int x, int y, int direction, int numSpaces, bool isSaltWater, bool* saltEncountered);
-
+        int lavaSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace);
         void makeBorder();
 
 
@@ -108,6 +109,10 @@ class FallingSandGame{
         void updateOil(int x, int y);
 
         void waterSaltInteraction(int sourceX, int sourceY, int targetX, int targetY);
+        void lavaSandInteraction(int sandX, int sandY);
+        void lavaStoneInteraction(int stoneX, int stoneY);
+        void lavaWaterInteraction(int sourceX, int sourceY, int targetX, int targetY);
+
         bool isFreshWater(int element);
         void placeElementsAtCursor(int element);
         int getRandomDirection();
