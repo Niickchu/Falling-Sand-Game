@@ -27,7 +27,7 @@ u16 VpVnData, VAux0Data;
 
 volatile bool RESET_BUTTON_PRESSED_FLAG = false;
 volatile bool STOP_TIME_FLAG = false;
-volatile bool ENABLE_CHUNKS_FLAG = true;
+volatile bool ENABLE_CHUNKS_FLAG = false;
 volatile bool INCREASE_CURSOR_FLAG = false;
 
 userInput_t userInput = {0, 0, 0, 0, 0, C};
