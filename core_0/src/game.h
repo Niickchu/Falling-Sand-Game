@@ -35,7 +35,7 @@
 
 #define ID_MASK         (0x0000000F)
 
-#define MAX_NUM_PARTICLES (20000)
+#define MAX_NUM_PARTICLES (2000000)
 
 #define rng() Xil_In32(XPAR_AXI_RNG_0_S00_AXI_BASEADDR)
 

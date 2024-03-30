@@ -14,7 +14,7 @@ FallingSandGame::FallingSandGame(int* gridPtr){
 
     numParticles = 0;
 
-    cursor = {GRID_WIDTH/2, GRID_HEIGHT/2, CURSOR_COLOUR};  //cursor needs the 1 to not be counted as air
+    cursor = {GRID_WIDTH/2, GRID_HEIGHT/2, CURSOR_COLOUR, CURSOR_LENGTH};  //cursor needs the 1 to not be counted as air
 
     //initialise the chunkBools_t array to false
     for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
@@ -65,9 +65,17 @@ void FallingSandGame::handleInput(userInput_t* input){
 	        break;
 	}
 
-    if (cursor.y > FRAME_HEIGHT - CURSOR_LENGTH) cursor.y = FRAME_HEIGHT - CURSOR_LENGTH;
+	if (INCREASE_CURSOR_FLAG) {
+		cursor.cursorSize += 2;
+		if(cursor.cursorSize > MAX_CURSOR_LENGTH) {
+			cursor.cursorSize = 1;
+		}
+		INCREASE_CURSOR_FLAG = false;
+	}
+
+    if (cursor.y > FRAME_HEIGHT - cursor.cursorSize) cursor.y = FRAME_HEIGHT - cursor.cursorSize;
     if (cursor.x < 0) cursor.x = 0;
-    if (cursor.x > FRAME_WIDTH -  CURSOR_LENGTH) cursor.x = FRAME_WIDTH -  CURSOR_LENGTH;
+    if (cursor.x > FRAME_WIDTH -  cursor.cursorSize) cursor.x = FRAME_WIDTH -  cursor.cursorSize;
     if (cursor.y < 0) cursor.y = 0;
 
     //place an element
@@ -96,8 +104,8 @@ void FallingSandGame::placeElementsAtCursor(int element){
 
 
     if (element == COLOUR_AIR){     //ERASER
-        for(int i = 0; i < CURSOR_LENGTH; i++) {
-            for(int j = 0; j < CURSOR_LENGTH; j++) {
+        for(int i = 0; i < cursor.cursorSize; i++) {
+            for(int j = 0; j < cursor.cursorSize; j++) {
                 int index = (cursor.y + i) * GRID_WIDTH + cursor.x + j;
                 if (grid[index] != AIR_ID) {
                     grid[index] = COLOUR_AIR;
@@ -116,8 +124,8 @@ void FallingSandGame::placeElementsAtCursor(int element){
     }    
 
 
-    for(int i = 0; i < CURSOR_LENGTH; i++) {
-        for(int j = 0; j < CURSOR_LENGTH; j++) {
+    for(int i = 0; i < cursor.cursorSize; i++) {
+        for(int j = 0; j < cursor.cursorSize; j++) {
 
             int index = (cursor.y + i) * GRID_WIDTH + cursor.x + j;
             if (grid[index] == AIR_ID) {
@@ -423,11 +431,14 @@ void FallingSandGame::swap(int x1, int y1, int x2, int y2){     //classic swap f
 }
 
 void FallingSandGame::drawCursor(int* image_buffer_pointer){
-    for(int i = 0; i < CURSOR_LENGTH; i++){
-        for(int j = 0; j < CURSOR_LENGTH; j++){
-            image_buffer_pointer[(cursor.y + i) * GRID_WIDTH + cursor.x + j] = cursor.colour;
-        }
-    }
+	for(int i = 0; i < cursor.cursorSize; i++) {
+	    for(int j = 0; j < cursor.cursorSize; j++) {
+	        if (i == 0 || i == cursor.cursorSize - 1 || j == 0 || j == cursor.cursorSize - 1) {
+	            image_buffer_pointer[(cursor.y + i) * GRID_WIDTH + cursor.x + j] = cursor.colour;
+	        }
+	    }
+	}
+
 }
 
 void FallingSandGame::drawActiveChunks(int* image_buffer_pointer){

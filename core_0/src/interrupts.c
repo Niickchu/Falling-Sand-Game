@@ -137,6 +137,7 @@ static void BTN_Handler(void *InstancePtr){
 			break;
 
 		case RIGHT_BUTTON_MASK: //8
+			INCREASE_CURSOR_FLAG = true;
 			break;
 
 		case UP_BUTTON_MASK: //16	stops time
