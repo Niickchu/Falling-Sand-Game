@@ -147,8 +147,13 @@ void FallingSandGame::placeElementsAtCursor(int element){
                     }
                 } 
                 
-                else {  // For other elements with RNG
-                    if (rng() > 13) {
+                else {  // For other elements with RNG, want rng to be dependent on cursor size. smallest cursor has no rng
+
+                    u32 threshold = 13;
+                    if (cursor.cursorSize == 1) {
+                        threshold = 0;
+                    } 
+                    if (rng() >= threshold) {
                         grid[index] = element + getModifiers(element);
                         numParticles++;
 
