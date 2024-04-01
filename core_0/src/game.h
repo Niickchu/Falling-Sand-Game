@@ -90,6 +90,7 @@ class FallingSandGame{
         void updateWater(int x, int y);
         void updateStone(int x, int y);
 
+        void placeElementsAtLocation(int x, int y, int element);
         void placeElementsAtCursor(int element);
 
         void swap(int x1, int y1, int x2, int y2);
