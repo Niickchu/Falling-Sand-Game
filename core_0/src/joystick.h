@@ -58,7 +58,7 @@ movement_t parse_dir(u16 VpVn_channel, u16 VAux_channel) {
 		y_diff = abs((VAux_channel - DEADZONE) - BASE_VAL);
 	} else if (VAux_channel < (BASE_VAL - DEADZONE)) {
 		dir_int = S;
-		y_diff = abs((VAux_channel - DEADZONE) - BASE_VAL);
+		y_diff = abs((VAux_channel + DEADZONE) - BASE_VAL);
 	}
 
 	if (VpVn_channel > (BASE_VAL + DEADZONE)) {
