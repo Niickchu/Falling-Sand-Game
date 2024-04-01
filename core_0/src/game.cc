@@ -1,7 +1,10 @@
 #include "game.h"
 #include "common.h"
 #include "xil_io.h"
+
+#include <math.h>
 #include "xil_cache.h"
+
 // #include <xsysmon.h>
 // #include "platform.h"
 
@@ -15,7 +18,9 @@ FallingSandGame::FallingSandGame(int* gridPtr){
 
     numParticles = 0;
 
-    cursor = {GRID_WIDTH/2, GRID_HEIGHT/2, CURSOR_COLOUR, CURSOR_LENGTH};  //cursor needs the 1 to not be counted as air
+    cursor = {GRID_WIDTH/2, GRID_HEIGHT/2,
+    		GRID_WIDTH/2, GRID_HEIGHT/2,
+			CURSOR_COLOUR, CURSOR_LENGTH};  //cursor needs the 1 to not be counted as air
 
     //initialise the chunkBools_t array to false
     for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
@@ -27,35 +32,40 @@ FallingSandGame::FallingSandGame(int* gridPtr){
 }
 
 void FallingSandGame::handleInput(userInput_t* input){
+   //TODO: want bound checks here to make sure cursor does not go off the screen
+   //TODO: interface with joystick to move cursor
 
-	switch (input->joystick_dir) {
+	cursor.prev_x = cursor.x;
+	cursor.prev_y = cursor.y;
+
+	switch (input->movement.dir) {
 	    case N:
-	        cursor.y -= 2;
+	        cursor.y -= input->movement.y_mult;
 	        break;
 	    case NE:
-	        cursor.y -= 1;
-	        cursor.x += 1;
+	        cursor.y -= input->movement.y_mult;
+	        cursor.x += input->movement.x_mult;
 	        break;
 	    case E:
-	        cursor.x += 2;
+	        cursor.x += input->movement.x_mult;
 	        break;
 	    case SE:
-	        cursor.y += 1;
-	        cursor.x += 1;
+	        cursor.y += input->movement.y_mult;
+	        cursor.x += input->movement.x_mult;
 	        break;
 	    case S:
-	        cursor.y += 2;
+	        cursor.y += input->movement.y_mult;
 	        break;
 	    case SW:
-	        cursor.y += 1;
-	        cursor.x -= 1;
+	        cursor.y += input->movement.y_mult;
+	        cursor.x -= input->movement.x_mult;
 	        break;
 	    case W:
-	        cursor.x -= 2;
+	        cursor.x -= input->movement.x_mult;
 	        break;
 	    case NW:
-	        cursor.y -= 1;
-	        cursor.x -= 1;
+	        cursor.y -= input->movement.y_mult;
+	        cursor.x -= input->movement.x_mult;
 	        break;
 	    case C:
 	        break;
@@ -66,7 +76,7 @@ void FallingSandGame::handleInput(userInput_t* input){
 	if (INCREASE_CURSOR_FLAG) {
 		cursor.cursorSize += 2;
 		if(cursor.cursorSize > MAX_CURSOR_LENGTH) {
-			cursor.cursorSize = 1;
+			cursor.cursorSize = MIN_CURSOR_LENGTH;
 		}
 		INCREASE_CURSOR_FLAG = false;
 	}
@@ -104,22 +114,19 @@ void FallingSandGame::handleInput(userInput_t* input){
 
 }
 
-
-//TODO: change numparticles logic when we have to implement the eraser
-void FallingSandGame::placeElementsAtCursor(int element){
-
+void FallingSandGame::placeElementsAtLocation(int x, int y, int element){
 
     if (element == COLOUR_AIR){     //ERASER
         for(int i = 0; i < cursor.cursorSize; i++) {
             for(int j = 0; j < cursor.cursorSize; j++) {
-                int index = (cursor.y + i) * GRID_WIDTH + cursor.x + j;
+                int index = (y + i) * GRID_WIDTH + x + j;
                 if (grid[index] != AIR_ID) {
                     grid[index] = COLOUR_AIR;
                     numParticles--;
 
                     //cursor.x is the absolute x position of the cursor
                     //cursor.y is the absolute y position of the cursor
-                    hitChunk(cursor.x + j, cursor.y + i);
+                    hitChunk(x + j, y + i);
 
                 }
             }
@@ -130,17 +137,18 @@ void FallingSandGame::placeElementsAtCursor(int element){
     }    
 
 
+
     for(int i = 0; i < cursor.cursorSize; i++) {
         for(int j = 0; j < cursor.cursorSize; j++) {
 
-            int index = (cursor.y + i) * GRID_WIDTH + cursor.x + j;
+            int index = (y + i) * GRID_WIDTH + x + j;
             if (grid[index] == AIR_ID) {
 
                 if ((element & ID_MASK) == STONE_ID) {  // No RNG for stone
                     grid[index] = element + getModifiers(element);
                     numParticles++;
 
-                    hitChunk(cursor.x + j, cursor.y + i);
+                    hitChunk(x + j, y + i);
 
                     if (numParticles >= MAX_NUM_PARTICLES) {
                         return;
@@ -157,7 +165,7 @@ void FallingSandGame::placeElementsAtCursor(int element){
                         grid[index] = element + getModifiers(element);
                         numParticles++;
 
-                        hitChunk(cursor.x + j, cursor.y + i);
+                        hitChunk(x + j, y + i);
 
                         if (numParticles >= MAX_NUM_PARTICLES) {
                             return;
@@ -168,6 +176,26 @@ void FallingSandGame::placeElementsAtCursor(int element){
             }
         }
     }
+}
+
+//TODO: change numparticles logic when we have to implement the eraser
+void FallingSandGame::placeElementsAtCursor(int element){
+	int x_diff, y_diff;
+
+	x_diff = cursor.x - cursor.prev_x;
+	y_diff = cursor.y - cursor.prev_y;
+
+	// not quite equal to distance, but kinda close enough,
+	// but the idea is that if the cursor moves too much
+	// and leaves a gap, we should also spawn particles there.
+	// this is mostly for improving stone placements at lower
+	// cursor sizes
+	if ((abs(x_diff) + abs(y_diff)) > cursor.cursorSize) {
+		this->placeElementsAtLocation(cursor.prev_x + (int)(x_diff / 2),
+				cursor.prev_y + (int)(y_diff / 2), element);
+	}
+
+	this->placeElementsAtLocation(cursor.x, cursor.y, element);
 
     //xil_printf("numParticles: %d\n\r", numParticles);
 }

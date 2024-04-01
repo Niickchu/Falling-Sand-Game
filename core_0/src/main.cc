@@ -23,7 +23,7 @@
 XSysMon SysMonInst;
 XSysMon_Config *ConfigPtr;
 XSysMon *SysMonInstPtr = &SysMonInst;
-u16 VpVnData, VAux0Data;
+int VpVnData, VAux0Data;
 
 volatile bool RESET_BUTTON_PRESSED_FLAG = false;
 volatile bool STOP_TIME_FLAG = false;
@@ -35,9 +35,6 @@ userInput_t userInput = {0, 0, 0, 0, 0, C};
 void setUserInput(userInput_t input);
 
 int main(){
-
-    sleep(2);
-
     COMM_VAL = 0;
 
     xil_printf("CPU0: writing startaddress for cpu1\n\r");
@@ -126,5 +123,5 @@ void setUserInput(userInput_t input){
 	VpVnData = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_VPVN);
 	VAux0Data = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_AUX_MIN + 0);
 
-	userInput.joystick_dir = parse_dir(VpVnData, VAux0Data);
+	userInput.movement = parse_dir(VpVnData, VAux0Data);
 }

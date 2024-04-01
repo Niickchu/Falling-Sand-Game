@@ -3,9 +3,14 @@
 
 #include <stdio.h>
 #include "common.h"
+#include <math.h>
 
-#define UPPER_THRESH 40000
-#define LOWER_THRESH 20000
+#define BASE_VAL 32000
+
+// since we only move by pixels, maybe just having discrete speed steps
+// may be better than having some sort of analog movement
+#define SPEED_STEP 6500
+#define DEADZONE 4000
 
 void printDirection(enum direction dir) {
     switch (dir) {
@@ -42,22 +47,36 @@ void printDirection(enum direction dir) {
     }
 }
 
-enum direction parse_dir(u16 VpVn_channel, u16 VAux_channel) {
-	u8 dir = 0;
+movement_t parse_dir(u16 VpVn_channel, u16 VAux_channel) {
+	movement_t movement;
+	int y_diff, x_diff = 0;
 
-	if (VAux_channel > UPPER_THRESH) {
-		dir = N;
-	} else if (VAux_channel < LOWER_THRESH) {
-		dir = S;
+	u8 dir_int = 0;
+
+	if (VAux_channel > (BASE_VAL + DEADZONE)) {
+		dir_int = N;
+		y_diff = abs((VAux_channel - DEADZONE) - BASE_VAL);
+	} else if (VAux_channel < (BASE_VAL - DEADZONE)) {
+		dir_int = S;
+		y_diff = abs((VAux_channel - DEADZONE) - BASE_VAL);
 	}
 
-	if (VpVn_channel > UPPER_THRESH) {
-		dir += W;
-	} else if (VpVn_channel < LOWER_THRESH) {
-		dir += E;
+	if (VpVn_channel > (BASE_VAL + DEADZONE)) {
+		dir_int += W;
+		x_diff = abs((VpVn_channel - DEADZONE) - BASE_VAL);
+	} else if (VpVn_channel < (BASE_VAL - DEADZONE)) {
+		dir_int += E;
+		x_diff = abs((VpVn_channel + DEADZONE) - BASE_VAL);
 	}
 
-	return (direction)dir;
+	direction dir = (direction)dir_int;
+
+	movement.dir = dir;
+
+	movement.y_mult = (unsigned int)(y_diff / SPEED_STEP) + 1;
+	movement.x_mult = (unsigned int)(x_diff / SPEED_STEP) + 1;
+
+	return movement;
 }
 
 #endif

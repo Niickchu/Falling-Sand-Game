@@ -105,6 +105,7 @@ class FallingSandGame{
         void updateSalt(int x, int y);
         void updateLava(int x, int y);
 
+        void placeElementsAtLocation(int x, int y, int element);
         void updateFire(int x, int y);
         void updateWood(int x, int y);
 
