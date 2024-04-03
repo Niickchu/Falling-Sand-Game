@@ -13,6 +13,7 @@
 #include "xparameters.h"
 #include "xil_io.h"
 #include "xiicps.h"
+
 #define fatalError(msg) throwFatalError(__PRETTY_FUNCTION__,msg)
 #define COMM_VAL            (*(volatile unsigned long *)(0xFFFF0000))
 

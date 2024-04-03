@@ -15,10 +15,12 @@
 #include "joystick.h"		//included in common.h
 #include <xsysmon.h>
 #include "time.h"
+#include "text.h"
 
 #define sev()           __asm__("sev")
 #define CPU1STARTADR    0xfffffff0
 #define COMM_VAL        (*(volatile unsigned long *)(0xFFFF0000))
+
 
 XSysMon SysMonInst;
 XSysMon_Config *ConfigPtr;
@@ -30,9 +32,10 @@ volatile bool STOP_TIME_FLAG = false;
 volatile bool ENABLE_CHUNKS_FLAG = false;
 volatile bool INCREASE_CURSOR_FLAG = false;
 
-userInput_t userInput = {0, 0, 0, 0, 0, C};
+userInput_t userInput = {0, 0, 0, 0, 0, C, AIR_ID};
 
 void setUserInput(userInput_t input);
+void draw_current_element(int *buffer);
 
 int main(){
     COMM_VAL = 0;
@@ -76,7 +79,7 @@ int main(){
 
 		setUserInput(userInput);
 		game.handleInput(&userInput);
-		
+
 		if(!STOP_TIME_FLAG){
 			game.update();
 		}
@@ -85,13 +88,16 @@ int main(){
 		//want to draw UI on the intermediate buffer
 		memcpy(intermediate_buffer, grid_buffer, NUM_BYTES_BUFFER);
 
-		//draw the cursor on top of the grid
-		game.drawCursor(intermediate_buffer);
 
 		//draw the active chunks
 		if(ENABLE_CHUNKS_FLAG){
 			game.drawActiveChunks(intermediate_buffer);
 		}
+
+		draw_current_element(intermediate_buffer);
+
+		//draw the cursor on top of the grid and above text
+		game.drawCursor(intermediate_buffer);
 
 		//render game state
 		memcpy(image_buffer_pointer, intermediate_buffer, NUM_BYTES_BUFFER);
@@ -101,6 +107,36 @@ int main(){
 	}
 
     return 0;
+}
+
+void draw_current_element(int *buffer) {
+
+	// temporary spacing
+    switch (userInput.selected_element) {
+    case SAND_ID:
+    	draw_text_at_location(0, 0, "[", buffer, COLOUR_WHITE);
+    	break;
+    case WATER_ID:
+    	draw_text_at_location(100, 0, "[", buffer, COLOUR_WHITE);
+    	break;
+    case STONE_ID:
+    	draw_text_at_location(200, 0, "[", buffer, COLOUR_WHITE);
+    	break;
+    case SALT_ID:
+    	draw_text_at_location(300, 0, "[", buffer, COLOUR_WHITE);
+    	break;
+    case LAVA_ID:
+    	draw_text_at_location(400, 0, "[", buffer, COLOUR_WHITE);
+    	break;
+	default:
+		break;
+    }
+
+	draw_text_at_location(9, 0, "SAND", buffer, COLOUR_SAND);
+	draw_text_at_location(109, 0, "WATER", buffer, COLOUR_WATER);
+	draw_text_at_location(209, 0, "STONE", buffer, COLOUR_STONE);
+	draw_text_at_location(309, 0, "SALT", buffer, COLOUR_SALT);
+	draw_text_at_location(409, 0, "LAVA", buffer, COLOUR_LAVA);
 }
 
 void setUserInput(userInput_t input){
