@@ -88,16 +88,15 @@ int main(){
 		//want to draw UI on the intermediate buffer
 		memcpy(intermediate_buffer, grid_buffer, NUM_BYTES_BUFFER);
 
-		//draw the cursor on top of the grid
 
 		//draw the active chunks
 		if(ENABLE_CHUNKS_FLAG){
 			game.drawActiveChunks(intermediate_buffer);
 		}
 
-//		draw_text_at_location(20, 20, "CURRENT ELEMENT", intermediate_buffer);
 		draw_current_element(intermediate_buffer);
 
+		//draw the cursor on top of the grid and above text
 		game.drawCursor(intermediate_buffer);
 
 		//render game state
