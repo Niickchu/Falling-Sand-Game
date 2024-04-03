@@ -86,13 +86,13 @@ void FallingSandGame::handleInput(userInput_t* input){
     if (cursor.x > FRAME_WIDTH -  cursor.cursorSize) cursor.x = FRAME_WIDTH -  cursor.cursorSize;
     if (cursor.y < 0) cursor.y = 0;
 
+	//protection in case of multiple elements selected. Note, could just use binary inputs for the switches instead
+    int element = getElement(input->switchValues);
+    input->selected_element = element & 0xF;
+
     //place an element
     if(input->placeElement){
         if (numParticles < MAX_NUM_PARTICLES) {
-            
-            //protection in case of multiple elements selected. Note, could just use binary inputs for the switches instead
-            int element = getElement(input->switchValues);
-
             placeElementsAtCursor(element);
         }
 

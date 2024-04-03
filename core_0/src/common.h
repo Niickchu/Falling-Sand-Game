@@ -3,7 +3,7 @@
 
 #define FRAME_WIDTH         (640)	//test change
 #define FRAME_HEIGHT        (480)
-#define GRID_WIDTH          FRAME_WIDTH
+#define GRID_WIDTH          (FRAME_WIDTH)
 #define GRID_HEIGHT         FRAME_HEIGHT
 #define NUM_BYTES_BUFFER    (FRAME_HEIGHT * FRAME_WIDTH * 4) //1280 x 1024 x 4 bytes
 #define NUM_INTS_BUFFER     (FRAME_HEIGHT * FRAME_WIDTH) //1280 x 1024 x 4 bytes / 4 bytes per int
@@ -38,6 +38,7 @@ typedef struct {
 	bool placeElement; // : 1;
 	bool resetGrid; // : 1;
 	movement_t movement;
+	int selected_element;
 }  userInput_t;
 
 extern userInput_t userInput;
