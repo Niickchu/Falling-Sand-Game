@@ -7,4 +7,8 @@
 
 # Folder to not ignore
 !/core_0/src/
+!/core_0/src/*
+
 !/core_1/src/
+!/core_1/src/*
+
