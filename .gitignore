@@ -1,5 +1,8 @@
 # Ignore everything in repository root 
-/*
+*
+
+# But don't ignore directory itself, to allow search inside it
+!*/
 
 # Files to not ignore
 !/.gitignore
