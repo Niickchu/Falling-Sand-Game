@@ -111,32 +111,31 @@ int main(){
 
 void draw_current_element(int *buffer) {
 
-	// temporary spacing
     switch (userInput.selected_element) {
     case SAND_ID:
-    	draw_text_at_location(0, 0, "[", buffer, COLOUR_WHITE);
+    	draw_text_at_location(5, 5, "[", buffer, COLOUR_WHITE);
     	break;
     case WATER_ID:
-    	draw_text_at_location(100, 0, "[", buffer, COLOUR_WHITE);
+    	draw_text_at_location(80, 5, "[", buffer, COLOUR_WHITE);
     	break;
     case STONE_ID:
-    	draw_text_at_location(200, 0, "[", buffer, COLOUR_WHITE);
+    	draw_text_at_location(155, 5, "[", buffer, COLOUR_WHITE);
     	break;
     case SALT_ID:
-    	draw_text_at_location(300, 0, "[", buffer, COLOUR_WHITE);
+    	draw_text_at_location(230, 5, "[", buffer, COLOUR_WHITE);
     	break;
     case LAVA_ID:
-    	draw_text_at_location(400, 0, "[", buffer, COLOUR_WHITE);
+    	draw_text_at_location(305, 5, "[", buffer, COLOUR_WHITE);
     	break;
 	default:
 		break;
     }
 
-	draw_text_at_location(9, 0, "SAND", buffer, COLOUR_SAND);
-	draw_text_at_location(109, 0, "WATER", buffer, COLOUR_WATER);
-	draw_text_at_location(209, 0, "STONE", buffer, COLOUR_STONE);
-	draw_text_at_location(309, 0, "SALT", buffer, COLOUR_SALT);
-	draw_text_at_location(409, 0, "LAVA", buffer, COLOUR_LAVA);
+	draw_text_at_location(14, 5, "SAND", buffer, COLOUR_SAND);
+	draw_text_at_location(89, 5, "WATER", buffer, COLOUR_WATER);
+	draw_text_at_location(164, 5, "STONE", buffer, COLOUR_STONE);
+	draw_text_at_location(239, 5, "SALT", buffer, COLOUR_SALT);
+	draw_text_at_location(314, 5, "LAVA", buffer, COLOUR_LAVA);
 }
 
 void setUserInput(userInput_t input){
