@@ -26,6 +26,7 @@
 #define COLOUR_WOOD     0x00F0F000
 #define COLOUR_FIRE     0x00F000F0
 #define COLOUR_SALT_WATER 0x00F0C050
+#define COLOUR_BORDER   0x00505050
 #define CURSOR_COLOUR   0x00F0F0F8 //needs the 8 to not be counted as air, although doesn't matter anymore as we have separate buffers
 
 //placeable elements
@@ -37,6 +38,7 @@
 #define LAVA_ID         (0x00000005)
 #define WOOD_ID         (0x00000006)        //beyond the scope of this project
 #define FIRE_ID         (0x00000007)        //beyond the scope of this project, might do anyway
+#define BORDER_ID       (0x00000008)
 
 #define IN_ALT_STATE    (0x01000000)
 #define LIFESPAN_MASK   (0x000F0000)
@@ -83,7 +85,7 @@ class FallingSandGame{
 
         int waterSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace);
         int lavaSearchHorizontally(int x, int y, int direction, int numSpaces, int* openSpace);
-        void makeBorder();
+        void drawBorder();
 
 
         chunkBools_t chunks[(GRID_WIDTH / CHUNK_SIZE)][(GRID_HEIGHT / CHUNK_SIZE)];     //x and y swapped when compared to row major format for the grid, bcuz standard

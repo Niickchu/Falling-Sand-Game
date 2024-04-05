@@ -22,6 +22,8 @@ FallingSandGame::FallingSandGame(int* gridPtr){
     		GRID_WIDTH/2, GRID_HEIGHT/2,
 			CURSOR_COLOUR, CURSOR_LENGTH};  //cursor needs the 1 to not be counted as air
 
+    drawBorder();
+
     //initialise the chunkBools_t array to false
     for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
         for (int j = 0; j < GRID_HEIGHT / CHUNK_SIZE; j++) {
@@ -103,6 +105,8 @@ void FallingSandGame::handleInput(userInput_t* input){
         numParticles = 0;
         input->resetGrid = 0;
 
+        drawBorder();
+
         for (int i = 0; i < GRID_WIDTH / CHUNK_SIZE; i++) {
             for (int j = 0; j < GRID_HEIGHT / CHUNK_SIZE; j++) {
                 chunks[i][j] = {false, false};
@@ -112,6 +116,28 @@ void FallingSandGame::handleInput(userInput_t* input){
         Xil_DCacheFlushRange((u32)grid, NUM_BYTES_BUFFER);
    }
 
+}
+
+void FallingSandGame::drawBorder(){
+    for(int i = 0; i < GRID_WIDTH; i++){
+        grid[i] = COLOUR_BORDER + BORDER_ID;
+        grid[(GRID_HEIGHT - 1) * GRID_WIDTH + i] = COLOUR_BORDER + BORDER_ID;
+    }
+
+    for(int i = 1; i < GRID_HEIGHT - 1; i++){
+        grid[i * GRID_WIDTH] = COLOUR_BORDER + BORDER_ID;
+        grid[i * GRID_WIDTH + GRID_WIDTH - 1] = COLOUR_BORDER + BORDER_ID;
+    }
+
+    for(int i = 1; i < GRID_WIDTH - 1; i++){
+        grid[GRID_WIDTH + i] = COLOUR_BORDER + BORDER_ID;
+        grid[(GRID_HEIGHT - 2) * GRID_WIDTH + i] = COLOUR_BORDER + BORDER_ID;
+    }
+
+    for(int i = 2; i < GRID_HEIGHT - 2; i++){
+        grid[i * GRID_WIDTH + 1] = COLOUR_BORDER + BORDER_ID;
+        grid[i * GRID_WIDTH + GRID_WIDTH - 2] = COLOUR_BORDER + BORDER_ID;
+    }
 }
 
 void FallingSandGame::placeElementsAtLocation(int x, int y, int element){
@@ -157,11 +183,7 @@ void FallingSandGame::placeElementsAtLocation(int x, int y, int element){
                 
                 else {  // For other elements with RNG, want rng to be dependent on cursor size. smallest cursor has no rng
 
-                    u32 threshold = 13;
-                    if (cursor.cursorSize == 1) {
-                        threshold = 0;
-                    } 
-                    if (rng() >= threshold) {
+                    if (rng() >= 13) {
                         grid[index] = element + getModifiers(element);
                         numParticles++;
 
