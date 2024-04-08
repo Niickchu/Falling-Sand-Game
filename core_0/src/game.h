@@ -55,7 +55,7 @@
 #define ID_MASK         (0x0000000F)
 #define ID_MASK_ALT     (0x0100000F)
 
-#define MAX_NUM_PARTICLES (2000000)
+#define MAX_NUM_PARTICLES (40000)
 
 #define rng() Xil_In32(XPAR_AXI_RNG_0_S00_AXI_BASEADDR)
 
@@ -78,7 +78,8 @@ class FallingSandGame{
 
         void drawCursor(int* image_buffer_pointer);
         void drawActiveChunks(int* image_buffer_pointer);
-
+        int returnCursorSize();
+        int returnNumParticles();
     private:
     
         bool xInbounds(int x);

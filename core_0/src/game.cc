@@ -33,6 +33,14 @@ FallingSandGame::FallingSandGame(int* gridPtr){
 
 }
 
+int FallingSandGame::returnCursorSize(){
+    return cursor.cursorSize;
+}
+
+int FallingSandGame::returnNumParticles(){
+    return numParticles;
+}
+
 void FallingSandGame::handleInput(userInput_t* input){
    //TODO: want bound checks here to make sure cursor does not go off the screen
    //TODO: interface with joystick to move cursor
@@ -94,9 +102,7 @@ void FallingSandGame::handleInput(userInput_t* input){
 
     //place an element
     if(input->placeElement){
-        if (numParticles < MAX_NUM_PARTICLES) {
-            placeElementsAtCursor(element);
-        }
+        placeElementsAtCursor(element);
 
     }
 
@@ -142,11 +148,11 @@ void FallingSandGame::drawBorder(){
 
 void FallingSandGame::placeElementsAtLocation(int x, int y, int element){
 
-    if (element == COLOUR_AIR){     //ERASER
+    if (element == COLOUR_AIR) {
         for(int i = 0; i < cursor.cursorSize; i++) {
             for(int j = 0; j < cursor.cursorSize; j++) {
                 int index = (y + i) * GRID_WIDTH + x + j;
-                if (grid[index] != AIR_ID) {
+                if ((grid[index] != AIR_ID) && ((grid[index] & ID_MASK) != BORDER_ID)) {
                     grid[index] = COLOUR_AIR;
                     numParticles--;
 
@@ -161,6 +167,10 @@ void FallingSandGame::placeElementsAtLocation(int x, int y, int element){
         //xil_printf("numParticles: %d\n\r", numParticles);
         return;
     }    
+
+    if (numParticles >= MAX_NUM_PARTICLES) {
+        return;
+    }
 
 
 
