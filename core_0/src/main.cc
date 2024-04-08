@@ -36,6 +36,8 @@ userInput_t userInput = {0, 0, 0, 0, 0, C, AIR_ID};
 
 void setUserInput(userInput_t input);
 void draw_current_element(int *buffer);
+void draw_cursor_size(int *buffer, int number);
+void draw_num_elements(int *buffer, int number);
 
 int main(){
     COMM_VAL = 0;
@@ -96,6 +98,12 @@ int main(){
 
 		draw_current_element(intermediate_buffer);
 
+		int cursorSize = game.returnCursorSize();
+		draw_cursor_size(intermediate_buffer, cursorSize);
+
+		int numParticles = game.returnNumParticles();
+		draw_num_elements(intermediate_buffer, numParticles);
+
 		//draw the cursor on top of the grid and above text
 		game.drawCursor(intermediate_buffer);
 
@@ -107,6 +115,22 @@ int main(){
 	}
 
     return 0;
+}
+
+void draw_cursor_size(int *buffer, int number) {
+	char numberString[10];
+	sprintf(numberString, "%d", number);
+	draw_text_at_location(445, 5, numberString, buffer, COLOUR_WHITE);
+
+	draw_text_at_location(389, 5, "CURSOR:", buffer, COLOUR_WHITE);
+}
+
+void draw_num_elements(int *buffer, int number) {
+	char numberString[10];
+	sprintf(numberString, "%d", number);
+	draw_text_at_location(570, 5, numberString, buffer, COLOUR_WHITE);
+
+	draw_text_at_location(490, 5, "NUM ELEMS:", buffer, COLOUR_WHITE);
 }
 
 void draw_current_element(int *buffer) {
