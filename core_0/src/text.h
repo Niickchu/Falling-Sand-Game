@@ -17,14 +17,14 @@ void draw_text_at_location(int x, int y, const char * text, int * memory_locatio
 
 	    for (unsigned int char_number = 0; char_number < text_length; char_number++) {
 	    	// the font8x8_basic uses the unicode values for array indexing so we can just pass in the
-	    	// actual char value
+	    	// actual char value. Whines with c++ without casting though
 	        char_slice = font8x8_basic[static_cast<int>(text[char_number])][row];
 
 	        for (int column = 0; column < 8; column++) {
 	        	// 1 if we should draw at this location, else 0
 	            pixel_val = !!(char_slice & (1 << (column)));
 
-	            // since pixel_val is binary, this ends up just being the colour or zero
+	            // since pixel_val is binary, this ends up just being the color or zero
 	            text_row[char_number * 8 + column] = pixel_val * color;
 	        }
 	    }

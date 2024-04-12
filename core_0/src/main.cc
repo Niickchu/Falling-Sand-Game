@@ -19,8 +19,8 @@
 
 #define sev()           __asm__("sev")
 #define CPU1STARTADR    0xfffffff0
-#define COMM_VAL        (*(volatile unsigned long *)(0xFFFF0000))
 
+volatile uint32_t* spinlock = (uint32_t*)0xFFFF0000;
 
 XSysMon SysMonInst;
 XSysMon_Config *ConfigPtr;
@@ -40,16 +40,13 @@ void draw_cursor_size(int *buffer, int number);
 void draw_num_elements(int *buffer, int number);
 
 int main(){
-    COMM_VAL = 0;
+    *spinlock = 0;
 
     xil_printf("CPU0: writing startaddress for cpu1\n\r");
     Xil_Out32(CPU1STARTADR, 0x10080000);
 
     sleep(1);
     xil_printf("CPU0: sending the SEV to wake up CPU1\n\r");
-    COMM_VAL = 1;
-
-	// -----------
 
 	int status = setupAllInterrupts();
 	if (status != XST_SUCCESS) {
@@ -71,6 +68,8 @@ int main(){
 
 	memset(image_buffer_pointer, 0, NUM_BYTES_BUFFER);
 	Xil_DCacheFlushRange((u32)image_buffer_pointer, NUM_BYTES_BUFFER);
+
+    *spinlock = 1;
 
 	//initialize game
 	FallingSandGame game(grid_buffer);
@@ -131,6 +130,8 @@ void draw_num_elements(int *buffer, int number) {
 	draw_text_at_location(490, 5, "NUM ELEMS:", buffer, COLOUR_WHITE);
 }
 
+// responsible for drawing the list of element at the top of the screen
+// also marks the one currently selected by the switches
 void draw_current_element(int *buffer, int elementID) {
 
     switch (elementID) {

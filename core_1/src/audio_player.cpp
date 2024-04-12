@@ -15,25 +15,15 @@
 #include "xiicps.h"
 
 #define fatalError(msg) throwFatalError(__PRETTY_FUNCTION__,msg)
-#define COMM_VAL            (*(volatile unsigned long *)(0xFFFF0000))
-
-#define R0_CLOCK_CONTROL 0x00
-
-void throwFatalError(const char *func,const char *msg) {
-	printf("%s() : %s\r\n",func,msg);
-	for(;;);
-}
 /* Redefine audio controller base address from xparameters.h */
 #define AUDIO_BASE				XPAR_ZED_AUDIO_CTRL_0_BASEADDR
-
 /* Slave address for the ADAU audio controller 8 */
 #define IIC_SLAVE_ADDR			0x76
-
 /* I2C Serial Clock frequency in Hertz */
 #define IIC_SCLK_RATE			400000
-XIicPs Iic;
 // Size of the buffer which holds the DMA Buffer Descriptors (BDs)
 #define DMA_BDUFFERSIZE 4000
+#define R0_CLOCK_CONTROL 0x00
 
 typedef struct
 {
@@ -58,22 +48,22 @@ void adau1761_dmaReset(adau1761_config *pDevice);
 void adau1761_dmaTransmit(adau1761_config *pDevice, u32 *buffer, size_t buffer_len, int nRepeats);
 void adau1761_dmaTransmitBLOB(adau1761_config *pDevice, u32 *buffer, size_t buffer_len);
 
-void AudioWriteToReg(unsigned char u8RegAddr, unsigned char u8Data) {
-    unsigned char u8TxData[3];
-    u8TxData[0] = 0x40; // Device address
-    u8TxData[1] = u8RegAddr; // Register address
-    u8TxData[2] = u8Data; // Data to write
+void AudioWriteToReg(unsigned char u8RegAddr, unsigned char u8Data);
 
-    XIicPs_MasterSendPolled(&Iic, u8TxData, 3, (IIC_SLAVE_ADDR >> 1));
-    while(XIicPs_BusIsBusy(&Iic));
+void throwFatalError(const char *func,const char *msg) {
+	printf("%s() : %s\r\n",func,msg);
+	for(;;);
 }
+
+// spinlock related to starting the background music, set by CPU 0
+volatile uint32_t* spinlock = (uint32_t*)0xFFFF0000;
 
 // This holds the memory allocated for the wav file currently played.
 u8 *theBuffer = NULL;
-
 size_t theBufferSize = 0;
 FATFS FS_instance;
 adau1761_config codec;
+XIicPs Iic;
 
 unsigned char IicConfig(unsigned int DeviceIdPS)
 {
@@ -100,7 +90,20 @@ unsigned char IicConfig(unsigned int DeviceIdPS)
 	return XST_SUCCESS;
 }
 
+void AudioWriteToReg(unsigned char u8RegAddr, unsigned char u8Data) {
+    unsigned char u8TxData[3];
+    u8TxData[0] = 0x40; // Device address
+    u8TxData[1] = u8RegAddr; // Register address
+    u8TxData[2] = u8Data; // Data to write
+
+    XIicPs_MasterSendPolled(&Iic, u8TxData, 3, (IIC_SLAVE_ADDR >> 1));
+    while(XIicPs_BusIsBusy(&Iic));
+}
+
+
 void AudioPllConfig() {
+
+	// for description of registers view https://www.analog.com/media/en/technical-documentation/data-sheets/ADAU1761.pdf
 
 	unsigned char u8TxData[8], u8RxData[6];
 	int Status;
@@ -114,18 +117,7 @@ void AudioPllConfig() {
 	// Disable Core Clock
 	AudioWriteToReg(R0_CLOCK_CONTROL, 0x0E);
 
-	/* 	MCLK = 10 MHz
-		R = 0100 = 4, N = 0x02 0x3C = 572, M = 0x02 0x71 = 625
 
-		PLL required output = 1024x48 KHz
-		(PLLout)			= 49.152 MHz
-
-		PLLout/MCLK			= 49.152 MHz/10 MHz
-							= 4.9152 MHz
-							= R + (N/M)
-							= 4 + (572/625) */
-
-	// Write 6 bytes to R1 @ register address 0x4002
 	u8TxData[0] = 0x40; // Register write address [15:8]
 	u8TxData[1] = 0x02; // Register write address [7:0]
 	u8TxData[2] = 0x02; // byte 6 - M[15:8]
@@ -160,20 +152,18 @@ void AudioPllConfig() {
 
 
 int adau1761_init(adau1761_config *pDevice, u16 dmaId, u16 interruptId) {
-	pDevice->spiChipAddr = 0;
-	pDevice->spiFifoWordsize = 4;
 
     int Status = IicConfig(XPAR_XIICPS_0_DEVICE_ID);
     if (Status != XST_SUCCESS) {
         fatalError("Could not initialize IIC");
     }
 
-    // Now replace SPI write calls with AudioWriteToReg for I2C
-    // Enable clock
-    AudioWriteToReg(0x00, 0x01); // Adjusted the register address
+    // for description of registers view https://www.analog.com/media/en/technical-documentation/data-sheets/ADAU1761.pdf
 
-    // Write other configurations using AudioWriteToReg as needed, for example:
-    AudioWriteToReg(0xF9, 0x7F); // Adjusted register addresses
+    // Enable clock
+    AudioWriteToReg(0x00, 0x01);
+
+    AudioWriteToReg(0xF9, 0x7F);
     AudioWriteToReg(0xFA, 0x01);
     AudioWriteToReg(0x15, 0x00);
     AudioWriteToReg(0x16, 0x00);
@@ -426,7 +416,7 @@ int main()
 {
 
 	// maybe not the best practice but works, and sometimes gives undefined behaviour otherwise
-	COMM_VAL = 0;
+	*spinlock = 0;
     init_platform();
 
     // had to change settings in order to get the SD card to mount on core 1, as per:
@@ -441,7 +431,7 @@ int main()
     AudioPllConfig();
 
     // spin lock until we get the "signal" from core 0
-    while (COMM_VAL != 1) {
+    while (*spinlock != 1) {
     };
 
     setvbuf(stdin, NULL, _IONBF, 0);
@@ -457,7 +447,7 @@ int main()
 	playWavFile("BGC.WAV");
 
 
-	while(COMM_VAL == 1);
+	while(*spinlock == 1);
 
     cleanup_platform();
     return 0;
