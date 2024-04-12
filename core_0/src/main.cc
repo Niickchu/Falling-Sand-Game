@@ -44,11 +44,9 @@ int main(){
 
     xil_printf("CPU0: writing startaddress for cpu1\n\r");
     Xil_Out32(CPU1STARTADR, 0x10080000);
-    dmb();  //waits until write has finished
 
-    xil_printf("CPU0: sending the SEV to wake up CPU1\n\r");
-    sev();
     sleep(1);
+    xil_printf("CPU0: sending the SEV to wake up CPU1\n\r");
     COMM_VAL = 1;
 
 	// -----------

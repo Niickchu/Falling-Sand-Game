@@ -12,6 +12,7 @@
 #define SPEED_STEP 6500
 #define DEADZONE 4000
 
+// mostly just for debugging
 void printDirection(enum direction dir) {
     switch (dir) {
         case N:
@@ -21,7 +22,6 @@ void printDirection(enum direction dir) {
             printf("North East\n");
             break;
         case E:
-            // Assuming the intended unique value for East
             printf("East\n");
             break;
         case SE:
@@ -53,6 +53,8 @@ movement_t parse_dir(u16 VpVn_channel, u16 VAux_channel) {
 
 	u8 dir_int = 0;
 
+	// use the DEADZONE to try and help eliminate drifting due
+	// to poor potentiometers
 	if (VAux_channel > (BASE_VAL + DEADZONE)) {
 		dir_int = N;
 		y_diff = abs((VAux_channel - DEADZONE) - BASE_VAL);
@@ -61,6 +63,8 @@ movement_t parse_dir(u16 VpVn_channel, u16 VAux_channel) {
 		y_diff = abs((VAux_channel + DEADZONE) - BASE_VAL);
 	}
 
+	// since we use one hot encoding for NSWE, can just add them
+	// together to make intermediate directions
 	if (VpVn_channel > (BASE_VAL + DEADZONE)) {
 		dir_int += W;
 		x_diff = abs((VpVn_channel - DEADZONE) - BASE_VAL);
@@ -73,6 +77,8 @@ movement_t parse_dir(u16 VpVn_channel, u16 VAux_channel) {
 
 	movement.dir = dir;
 
+	// we just consider the speed how many multiples of SPEED_STEP
+	// the applied directions deviate from their base values
 	movement.y_mult = (unsigned int)(y_diff / SPEED_STEP) + 1;
 	movement.x_mult = (unsigned int)(x_diff / SPEED_STEP) + 1;
 

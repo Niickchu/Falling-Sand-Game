@@ -53,11 +53,11 @@ u8 adau1761_spiRead(adau1761_config *pDevice,u16 addr);
 
 int adau1761_dmaSetup(adau1761_config *pDevice);
 void adau1761_dmaFreeProcessedBDs(adau1761_config *pDevice);
-int adau1761_dmaBusy(adau1761_config *pDevice);
 void adau1761_dmaReset(adau1761_config *pDevice);
 
 void adau1761_dmaTransmit(adau1761_config *pDevice, u32 *buffer, size_t buffer_len, int nRepeats);
 void adau1761_dmaTransmitBLOB(adau1761_config *pDevice, u32 *buffer, size_t buffer_len);
+
 void AudioWriteToReg(unsigned char u8RegAddr, unsigned char u8Data) {
     unsigned char u8TxData[3];
     u8TxData[0] = 0x40; // Device address
@@ -67,8 +67,14 @@ void AudioWriteToReg(unsigned char u8RegAddr, unsigned char u8Data) {
     XIicPs_MasterSendPolled(&Iic, u8TxData, 3, (IIC_SLAVE_ADDR >> 1));
     while(XIicPs_BusIsBusy(&Iic));
 }
+
+// This holds the memory allocated for the wav file currently played.
+u8 *theBuffer = NULL;
+
+size_t theBufferSize = 0;
 FATFS FS_instance;
 adau1761_config codec;
+
 unsigned char IicConfig(unsigned int DeviceIdPS)
 {
 	XIicPs_Config *Config;
@@ -152,10 +158,6 @@ void AudioPllConfig() {
 												// bit 0:		COREN = Core Clock enabled
 }
 
-// This holds the memory allocated for the wav file currently played.
-u8 *theBuffer = NULL;
-size_t theBufferSize = 0;
-int theVolume = 2;
 
 int adau1761_init(adau1761_config *pDevice, u16 dmaId, u16 interruptId) {
 	pDevice->spiChipAddr = 0;
@@ -234,9 +236,11 @@ int adau1761_dmaSetup(adau1761_config *pDevice) {
 		fatalError("Failed clone BDs");
 	}
 
-	// Start the TX channel
+	// obviously we want the background track to loop, so we can just set the ring to be cyclical
 	XAxiDma_BdRingEnableCyclicDMA(TxRingPtr);
 	XAxiDma_SelectCyclicMode(&pDevice->dmaAxiController, XAXIDMA_DMA_TO_DEVICE, 1);
+
+	// Start the TX channel
 	Status = XAxiDma_BdRingStart(TxRingPtr);
 	//Status = XAxiDma_StartBdRingHw(TxRingPtr);
 	if (Status != XST_SUCCESS) {
@@ -246,55 +250,9 @@ int adau1761_dmaSetup(adau1761_config *pDevice) {
 	return 0;
 }
 
-int adau1761_dmaBusy(adau1761_config *pDevice) {
-	if (pDevice->dmaWritten && XAxiDma_Busy(&pDevice->dmaAxiController,XAXIDMA_DMA_TO_DEVICE)!=0) {
-		return TRUE;
-	}
-	else {
-		return FALSE;
-	}
-}
-
-void adau1761_dmaReset(adau1761_config *pDevice) {
-	XAxiDma_Reset(&pDevice->dmaAxiController);
-	for(int TimeOut = 2000000;TimeOut>0;--TimeOut) {
-		if (XAxiDma_ResetIsDone(&pDevice->dmaAxiController)) {
-			break;
-		}
-	}
-}
-
-void adau1761_dmaStop(adau1761_config *pDevice) {
-	// That's a slightly crude way to stop the DMA
-	adau1761_dmaReset(pDevice);
-
-	// Now everything is messed up, we need to reinitialize the DMA controller.
-	int xStatus = adau1761_dmaSetup(pDevice);
-	if (xStatus!=0) {
-		fatalError("adau1761_dmaSetup() failed");
-	}
-}
-
-void adau1761_dmaFreeProcessedBDs(adau1761_config *pDevice) {
-	XAxiDma_BdRing *TxRingPtr = XAxiDma_GetTxRing(&pDevice->dmaAxiController);
-
-	// Get all processed BDs from hardware
-	XAxiDma_Bd *BdPtr;
-	int BdCount = XAxiDma_BdRingFromHw(TxRingPtr, XAXIDMA_ALL_BDS, &BdPtr);
-
-	// Free all processed BDs for future transmission
-	int Status = XAxiDma_BdRingFree(TxRingPtr, BdCount, BdPtr);
-	if (Status != XST_SUCCESS) {
-		fatalError("Failed to free BDs");
-	}
-}
-
 void adau1761_dmaTransmit_single(adau1761_config *pDevice, u32 *buffer, size_t buffer_len) {
 
 	XAxiDma_BdRing *TxRingPtr = XAxiDma_GetTxRing(&pDevice->dmaAxiController);
-
-	// Free the processed BDs from previous run.
-	adau1761_dmaFreeProcessedBDs(pDevice);
 
 	// Flush the SrcBuffer before the DMA transfer, in case the Data Cache is enabled
 	Xil_DCacheFlushRange((u32)buffer, buffer_len * sizeof(u32));
@@ -358,26 +316,11 @@ typedef struct {
 	u8 SubFormat[16];
 } fmtChunk_t;
 
-void stopWavFile() {
-	// If there is already a WAV file playing, stop it
-	if (adau1761_dmaBusy(&codec)) {
-		adau1761_dmaStop(&codec);
-	}
-    // If there was already a WAV file, free the memory
-    if (theBuffer){
-    	free(theBuffer);
-    	theBuffer = NULL;
-    	theBufferSize = 0;
-    }
-}
-
 void playWavFile(const char *filename) {
     headerWave_t headerWave;
     fmtChunk_t fmtChunk;
     FIL file;
     UINT nBytesRead=0;
-
-    stopWavFile();
 
     FRESULT res = f_open(&file, filename, FA_READ);
     if (res!=0) {
@@ -461,8 +404,8 @@ void playWavFile(const char *filename) {
     		for(u32 i=0;i<theBufferSize/4;++i) {
     			short left  = (short) ((pSource[i]>>16) & 0xFFFF);
     			short right = (short) ((pSource[i]>> 0) & 0xFFFF);
-    			int left_i  = -(int)left * theVolume / 4;
-    			int right_i = -(int)right * theVolume / 4;
+    			int left_i  = -(int)left * 1 / 4;
+    			int right_i = -(int)right * 1 / 4;
     			if (left>32767) left = 32767;
     			if (left<-32767) left = -32767;
     			if (right>32767) right = 32767;
@@ -481,17 +424,24 @@ void playWavFile(const char *filename) {
 
 int main()
 {
+
+	// maybe not the best practice but works, and sometimes gives undefined behaviour otherwise
+	COMM_VAL = 0;
     init_platform();
 
-    Xil_SetTlbAttributes(0xFFFF0000, 0x14de2);  // S=b1 TEX=b100 AP=b11, Domain=b1111, C=b0, B=b0
-
+    // had to change settings in order to get the SD card to mount on core 1, as per:
+    // https://support.xilinx.com/s/question/0D52E00006hpMMwSAM/xapp1079-20191-sd-access-on-processor-1?language=en_US
+    // honestly don't know why it works though
+    Xil_SetTlbAttributes(0xFFFF0000, 0x14de2);
     Xil_SetTlbAttributes(0x00200000, 0x14de6);
     Xil_SetTlbAttributes(0x00300000, 0x14de6);
     Xil_SetTlbAttributes(0x00400000, 0x14de6);
 
     IicConfig(XPAR_XIICPS_0_DEVICE_ID);
     AudioPllConfig();
-    while (COMM_VAL == 0) {
+
+    // spin lock until we get the "signal" from core 0
+    while (COMM_VAL != 1) {
     };
 
     setvbuf(stdin, NULL, _IONBF, 0);
@@ -506,9 +456,8 @@ int main()
 
 	playWavFile("BGC.WAV");
 
-	while(1);
 
-	adau1761_dmaReset(&codec);
+	while(COMM_VAL == 1);
 
     cleanup_platform();
     return 0;
