@@ -27,18 +27,14 @@ typedef struct {
 	short y;
 	int colour;
 	int cursorSize;
-	//short previousX;		//used for when the cursor moves multiple pixels per update
-	//short previousY;
 } cursor_t;
 
 typedef struct {
-	short moveCursorVertically; // : 8;
-	short moveCursorHorizontally; // : 8;
-	short switchValues; // : 8;
-	bool placeElement; // : 1;
-	bool resetGrid; // : 1;
+	short selectedElement;
+	bool placeElement;
+	bool resetGrid;
+	bool increaseCursor;
 	movement_t movement;
-	int selected_element;
 }  userInput_t;
 
 extern userInput_t userInput;

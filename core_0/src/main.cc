@@ -32,10 +32,10 @@ volatile bool STOP_TIME_FLAG = false;
 volatile bool ENABLE_CHUNKS_FLAG = false;
 volatile bool INCREASE_CURSOR_FLAG = false;
 
-userInput_t userInput = {0, 0, 0, 0, 0, C, AIR_ID};
+userInput_t userInput = {0, 0, 0, 0, C};
 
 void setUserInput(userInput_t input);
-void draw_current_element(int *buffer);
+void draw_current_element(int *buffer, int elementID);
 void draw_cursor_size(int *buffer, int number);
 void draw_num_elements(int *buffer, int number);
 
@@ -80,7 +80,7 @@ int main(){
     while(1){
 
 		setUserInput(userInput);
-		game.handleInput(&userInput);
+		int elementID = game.handleInput(&userInput);
 
 		if(!STOP_TIME_FLAG){
 			game.update();
@@ -96,7 +96,7 @@ int main(){
 			game.drawActiveChunks(intermediate_buffer);
 		}
 
-		draw_current_element(intermediate_buffer);
+		draw_current_element(intermediate_buffer, elementID);
 
 		int cursorSize = game.returnCursorSize();
 		draw_cursor_size(intermediate_buffer, cursorSize);
@@ -133,9 +133,9 @@ void draw_num_elements(int *buffer, int number) {
 	draw_text_at_location(490, 5, "NUM ELEMS:", buffer, COLOUR_WHITE);
 }
 
-void draw_current_element(int *buffer) {
+void draw_current_element(int *buffer, int elementID) {
 
-    switch (userInput.selected_element) {
+    switch (elementID) {
     case SAND_ID:
     	draw_text_at_location(5, 5, "[", buffer, COLOUR_WHITE);
     	break;
@@ -163,8 +163,6 @@ void draw_current_element(int *buffer) {
 }
 
 void setUserInput(userInput_t input){
-	//Because we are using interrupts, I think we need to do this weird flag thing
-	//maybe better because we don't want to change the userInput while game.update() is running
 	if (getButtonValues() & MIDDLE_BUTTON_MASK) {
 		userInput.placeElement = true;
 	}
@@ -177,7 +175,12 @@ void setUserInput(userInput_t input){
 		RESET_BUTTON_PRESSED_FLAG = false;
 	}
 
-	userInput.switchValues = getSwitchValues();
+	if (INCREASE_CURSOR_FLAG) {
+		userInput.increaseCursor = 1;
+		INCREASE_CURSOR_FLAG = false;
+	}
+
+	userInput.selectedElement = getSwitchValues();
 
 	VpVnData = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_VPVN);
 	VAux0Data = XSysMon_GetAdcData(SysMonInstPtr, XSM_CH_AUX_MIN + 0);
