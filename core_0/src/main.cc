@@ -79,14 +79,13 @@ int main(){
 		setUserInput(userInput);
 		int elementID = game.handleInput(&userInput);
 
-		if(!STOP_TIME_FLAG){
+		if(!STOP_TIME_FLAG){	//if time is stopped, don't step the elements in time
 			game.update();
 		}
 
 
-		//want to draw UI on the intermediate buffer
+		//intermediate buffer is used to draw the text on top of the grid
 		memcpy(intermediate_buffer, grid_buffer, NUM_BYTES_BUFFER);
-
 
 		//draw the active chunks
 		if(ENABLE_CHUNKS_FLAG){
@@ -101,10 +100,9 @@ int main(){
 		int numParticles = game.returnNumParticles();
 		draw_num_elements(intermediate_buffer, numParticles);
 
-		//draw the cursor on top of the grid and above text
 		game.drawCursor(intermediate_buffer);
 
-		//render game state
+		//render game state to the image buffer
 		memcpy(image_buffer_pointer, intermediate_buffer, NUM_BYTES_BUFFER);
 
 		Xil_DCacheFlushRange((u32)image_buffer_pointer, NUM_BYTES_BUFFER);

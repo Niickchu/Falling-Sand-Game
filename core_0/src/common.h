@@ -1,13 +1,13 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define FRAME_WIDTH         (640)	//test change
+#define FRAME_WIDTH         (640)
 #define FRAME_HEIGHT        (480)
 #define GRID_WIDTH          (FRAME_WIDTH)
 #define GRID_HEIGHT         FRAME_HEIGHT
 #define NUM_BYTES_BUFFER    (FRAME_HEIGHT * FRAME_WIDTH * 4) //1280 x 1024 x 4 bytes
 #define NUM_INTS_BUFFER     (FRAME_HEIGHT * FRAME_WIDTH) //1280 x 1024 x 4 bytes / 4 bytes per int
-#define CURSOR_LENGTH       (5)	//so that cursor has a centre
+#define CURSOR_LENGTH       (5)
 #define MIN_CURSOR_LENGTH	(3)
 #define MAX_CURSOR_LENGTH 	(30)
 

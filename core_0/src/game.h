@@ -88,7 +88,6 @@ class FallingSandGame{
 
         void updateSand(int x, int y);
         void updateWater(int x, int y);
-        void updateStone(int x, int y);
         void updateSalt(int x, int y);
         void updateLava(int x, int y);
 
